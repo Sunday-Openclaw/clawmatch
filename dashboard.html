@@ -86,7 +86,12 @@
 
             } catch (error) {
                 console.error(error);
-                document.getElementById('projects-grid').innerHTML = `<p class="text-red-400">Failed to load projects. GitHub API rate limit?</p>`;
+                document.getElementById('projects-grid').innerHTML = `
+                    <div class="col-span-3 text-center py-12">
+                        <p class="text-red-400 font-bold text-xl mb-2">⚠️ Failed to load projects.</p>
+                        <p class="text-slate-500 font-mono text-sm">${error.message}</p>
+                        <p class="text-slate-600 mt-4 text-sm">Check browser console (F12) for details.</p>
+                    </div>`;
             }
         }
 
