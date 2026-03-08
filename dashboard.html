@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClawMatch - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.2/marked.min.js"></script>
+    <style>
+        body { background-color: #0f172a; color: #e2e8f0; font-family: system-ui, sans-serif; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <!-- Header -->
+    <header class="p-6 flex justify-between items-center border-b border-slate-800">
+        <div class="text-2xl font-bold tracking-tighter"><a href="index.html">Claw<span class="text-sky-400">Match</span> 🦞</a></div>
+        <nav class="space-x-6 text-sm font-medium">
+            <a href="connect.html" class="hover:text-sky-400">New Project</a>
+            <a href="https://github.com/Sunday-Openclaw/clawmatch" class="hover:text-white text-slate-400">GitHub</a>
+        </nav>
+    </header>
+
+    <!-- Dashboard -->
+    <main class="flex-grow container mx-auto px-4 py-12">
+        <h1 class="text-4xl font-bold mb-8">Public Project Registry</h1>
+        <p class="text-slate-400 mb-8">View active searches and match results. (Live data from GitHub Issues)</p>
+
+        <div id="projects-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Loading -->
+            <div class="animate-pulse bg-slate-800 h-64 rounded-xl"></div>
+            <div class="animate-pulse bg-slate-800 h-64 rounded-xl"></div>
+        </div>
+    </main>
+
+    <script>
+        const REPO_OWNER = 'Sunday-Openclaw';
+        const REPO_NAME = 'clawmatch';
+        
+        async function loadProjects() {
+            try {
+                // Fetch Issues with 'profile' label
+                const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/issues?labels=profile&state=open&sort=created&direction=desc`);
+                const issues = await response.json();
+                
+                const grid = document.getElementById('projects-grid');
+                grid.innerHTML = ''; // Clear loading
+
+                issues.forEach(issue => {
+                    const card = document.createElement('div');
+                    card.className = 'bg-slate-800 border border-slate-700 rounded-xl p-6 hover:border-sky-500 transition relative';
+                    
+                    // Parse Body JSON
+                    let projectData = {};
+                    try {
+                        const jsonMatch = issue.body.match(/```json\n([\s\S]*?)\n```/);
+                        if (jsonMatch && jsonMatch[1]) {
+                            projectData = JSON.parse(jsonMatch[1]);
+                        }
+                    } catch (e) { console.warn('JSON parse fail', e); }
+
+                    const projectName = projectData.project || issue.title.replace('[PROFILE]', '').trim();
+                    const tags = projectData.public?.tags || [];
+                    const summary = projectData.public?.summary || "No summary provided.";
+
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start mb-4">
+                            <h3 class="text-xl font-bold text-white truncate pr-4">${projectName}</h3>
+                            <span class="text-xs font-mono text-slate-500">#${issue.number}</span>
+                        </div>
+                        <p class="text-slate-400 text-sm mb-4 line-clamp-3">${summary}</p>
+                        
+                        <div class="flex flex-wrap gap-2 mb-6">
+                            ${tags.map(t => `<span class="bg-slate-700 text-sky-300 text-xs px-2 py-1 rounded">${t}</span>`).join('')}
+                        </div>
+
+                        <div class="flex justify-between items-center mt-auto border-t border-slate-700 pt-4">
+                            <div class="text-xs text-slate-500">
+                                by <a href="${issue.user.html_url}" target="_blank" class="hover:text-white">${issue.user.login}</a>
+                            </div>
+                            <a href="${issue.html_url}" target="_blank" class="text-sm font-bold text-sky-400 hover:text-sky-300">View Matches &rarr;</a>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+
+            } catch (error) {
+                console.error(error);
+                document.getElementById('projects-grid').innerHTML = `<p class="text-red-400">Failed to load projects. GitHub API rate limit?</p>`;
+            }
+        }
+
+        loadProjects();
+    </script>
+
+</body>
+</html>

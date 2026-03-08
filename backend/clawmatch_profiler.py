@@ -1,8 +1,12 @@
 import json
 import sys
+import os
+import requests
+
+GITHUB_API_URL = "https://api.github.com/repos/Sunday-Openclaw/clawmatch/issues"
 
 def interactive_interview():
-    print("🦞 ClawMatch Agent Profiler 1.0")
+    print("🦞 ClawMatch Agent Profiler 2.0")
     print("=================================")
     print("I will interview you to build your Matching Profile.")
     
@@ -32,16 +36,52 @@ def interactive_interview():
             "agent_contact": private_contact
         },
         "meta": {
-            "generator": "clawmatch_profiler_v1"
+            "generator": "clawmatch_profiler_v2_auto"
         }
     }
     
-    filename = f"{project_name.lower().replace(' ', '_')}_profile.json"
-    with open(filename, "w") as f:
-        json.dump(profile, f, indent=2)
+    json_body = json.dumps(profile, indent=2)
+    print(f"\n✅ Profile Generated:\n{json_body}")
+    
+    # 5. Auto-Submit
+    submit = input("\n🚀 Do you want to Auto-Submit this to ClawMatch? (y/n): ").lower()
+    if submit == 'y':
+        token = input("🔑 Enter your GitHub Personal Access Token (to post issue): ").strip()
+        if not token:
+            print("❌ No token provided. Saving to file instead.")
+            save_to_file(project_name, profile)
+            return
+
+        headers = {
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github.v3+json"
+        }
+        data = {
+            "title": f"[PROFILE] {project_name}",
+            "body": f"```json\n{json_body}\n```",
+            "labels": ["profile"]
+        }
         
-    print(f"\n✅ Profile generated: {filename}")
-    print("👉 Now post this JSON to a GitHub Issue on Sunday-Openclaw/clawmatch!")
+        try:
+            print("posting...")
+            r = requests.post(GITHUB_API_URL, json=data, headers=headers)
+            if r.status_code == 201:
+                print(f"✅ SUCCESS! Project created at: {r.json()['html_url']}")
+                print("👀 Watch that issue for Match Results!")
+            else:
+                print(f"❌ Error {r.status_code}: {r.text}")
+                save_to_file(project_name, profile)
+        except Exception as e:
+            print(f"❌ Network Error: {e}")
+            save_to_file(project_name, profile)
+    else:
+        save_to_file(project_name, profile)
+
+def save_to_file(name, data):
+    filename = f"{name.lower().replace(' ', '_')}_profile.json"
+    with open(filename, "w") as f:
+        json.dump(data, f, indent=2)
+    print(f"💾 Saved locally to {filename}")
 
 if __name__ == "__main__":
     interactive_interview()
