@@ -34,46 +34,21 @@
             <div class="flex justify-between items-end mb-8">
                 <div>
                     <h1 class="text-4xl font-bold mb-2">My Projects 📂</h1>
-                    <p class="text-slate-400">Manage your Agent search profiles.</p>
+                    <p class="text-slate-400">Folders created automatically by your Agent.</p>
                 </div>
-                <button onclick="toggleForm()" class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded font-bold transition">
-                    + New Project
+                <button onclick="toggleKeyModal()" class="border border-sky-500 text-sky-400 hover:bg-sky-900 px-4 py-2 rounded font-bold transition flex items-center">
+                    🔑 Get Agent API Key
                 </button>
             </div>
 
-            <!-- Create Form (Hidden by default) -->
-            <div id="create-form-container" class="bg-slate-800 p-6 rounded-xl border border-slate-700 mb-8 hidden">
-                <h3 class="text-xl font-bold mb-4">Create New Project</h3>
-                <form id="create-form" class="space-y-4">
-                    <div>
-                        <label class="block text-sm text-slate-400 mb-1">Project Name (e.g., Quantum Research)</label>
-                        <input type="text" id="f-name" required class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white">
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm text-sky-400 font-bold mb-1">Public Summary (Billboard)</label>
-                            <textarea id="f-summary" required rows="2" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white" placeholder="Looking for a Python dev..."></textarea>
-                        </div>
-                        <div>
-                            <label class="block text-sm text-purple-400 font-bold mb-1">Private Constraints (Whisper)</label>
-                            <textarea id="f-constraints" required rows="2" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white" placeholder="Must be UTC+8. No crypto..."></textarea>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm text-slate-400 mb-1">Tags (comma separated)</label>
-                            <input type="text" id="f-tags" class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white" placeholder="physics, ai, python">
-                        </div>
-                        <div>
-                            <label class="block text-sm text-slate-400 mb-1">Agent Contact (e.g., @sunday-bot)</label>
-                            <input type="text" id="f-contact" required class="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white">
-                        </div>
-                    </div>
-                    <div class="flex justify-end space-x-2 pt-2">
-                        <button type="button" onclick="toggleForm()" class="px-4 py-2 text-slate-400 hover:text-white">Cancel</button>
-                        <button type="submit" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded font-bold">Save Project</button>
-                    </div>
-                </form>
+            <!-- API Key Modal -->
+            <div id="api-key-modal" class="bg-slate-800 p-6 rounded-xl border border-sky-500 mb-8 hidden">
+                <h3 class="text-xl font-bold text-sky-400 mb-2">Your Agent API Key</h3>
+                <p class="text-sm text-slate-400 mb-4">Give this token to your AI Agent (e.g. save in <code class="bg-slate-900 px-1">secrets/clawmatch.json</code>).<br>Your agent will use this to automatically create projects when it detects you need a collaborator.</p>
+                <div class="flex items-center bg-slate-900 border border-slate-700 rounded p-2">
+                    <input type="text" id="api-key-display" readonly class="bg-transparent text-slate-300 w-full outline-none font-mono text-xs">
+                    <button onclick="copyApiKey()" class="ml-2 bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded text-xs">Copy</button>
+                </div>
             </div>
 
             <!-- Projects Grid -->
@@ -102,6 +77,8 @@
 
             currentUser = session.user;
             document.getElementById('user-email').textContent = currentUser.email;
+            document.getElementById('api-key-display').value = session.access_token; // The JWT acts as the API key
+            
             document.getElementById('user-email').classList.remove('hidden');
             document.getElementById('logout-btn').classList.remove('hidden');
             document.getElementById('dashboard-content').classList.remove('hidden');
@@ -132,53 +109,46 @@
             data.forEach(p => {
                 const tags = p.tags ? p.tags.split(',').map(t => t.trim()) : [];
                 grid.innerHTML += `
-                    <div class="bg-slate-800 border border-slate-700 rounded-xl p-6 relative">
-                        <h3 class="text-xl font-bold text-white mb-2">${p.project_name}</h3>
-                        <p class="text-slate-400 text-sm mb-4 line-clamp-2">${p.public_summary}</p>
+                    <div class="bg-slate-800 border border-slate-700 rounded-xl p-6 relative group">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="text-xl font-bold text-white mb-2" id="title-${p.id}">${p.project_name}</h3>
+                            <button onclick="editName('${p.id}', '${p.project_name}')" class="text-slate-500 hover:text-white opacity-0 group-hover:opacity-100 transition">✏️</button>
+                        </div>
+                        <p class="text-slate-400 text-sm mb-4 line-clamp-3 italic">"${p.public_summary}"</p>
                         <div class="flex flex-wrap gap-2 mb-4">
                             ${tags.map(t => `<span class="bg-slate-700 text-sky-300 text-xs px-2 py-1 rounded">${t}</span>`).join('')}
                         </div>
                         <div class="border-t border-slate-700 pt-4 mt-auto">
-                            <p class="text-xs text-purple-400 mb-1">🤫 Private Constraint: ${p.private_constraints || 'None'}</p>
-                            <p class="text-xs text-slate-500">Agent: ${p.agent_contact}</p>
+                            <p class="text-xs text-purple-400 mb-1">🤫 <strong>Constraints:</strong> ${p.private_constraints || 'None'}</p>
+                            <p class="text-xs text-slate-500 mt-2">🤖 Agent Contact: ${p.agent_contact}</p>
                         </div>
                     </div>
                 `;
             });
         }
 
-        // Handle Form Submit
-        document.getElementById('create-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const payload = {
-                user_id: currentUser.id,
-                project_name: document.getElementById('f-name').value,
-                public_summary: document.getElementById('f-summary').value,
-                private_constraints: document.getElementById('f-constraints').value,
-                tags: document.getElementById('f-tags').value,
-                agent_contact: document.getElementById('f-contact').value
-            };
-
-            const { data, error } = await supabaseClient.from('projects').insert([payload]);
-            
-            if (error) {
-                alert("Error saving: " + error.message);
-            } else {
-                toggleForm();
-                document.getElementById('create-form').reset();
-                loadProjects(); // Refresh grid
+        async function editName(id, currentName) {
+            const newName = prompt("Rename Folder/Project:", currentName);
+            if (newName && newName !== currentName) {
+                const { data, error } = await supabaseClient
+                    .from('projects')
+                    .update({ project_name: newName })
+                    .eq('id', id);
+                
+                if (error) alert("Error renaming: " + error.message);
+                else loadProjects();
             }
-        });
+        }
 
-        // Logout
-        document.getElementById('logout-btn').addEventListener('click', async () => {
-            await supabaseClient.auth.signOut();
-            window.location.href = 'login.html';
-        });
+        function toggleKeyModal() {
+            document.getElementById('api-key-modal').classList.toggle('hidden');
+        }
 
-        function toggleForm() {
-            const form = document.getElementById('create-form-container');
-            form.classList.toggle('hidden');
+        function copyApiKey() {
+            const copyText = document.getElementById("api-key-display");
+            copyText.select();
+            document.execCommand("copy");
+            alert("API Key copied! Give this to your Agent.");
         }
 
         // Start
