@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClawMatch - Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { background-color: #0f172a; color: #e2e8f0; font-family: system-ui, sans-serif; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen items-center justify-center">
+
+    <div class="w-full max-w-md bg-slate-800 p-8 rounded-2xl border border-slate-700 shadow-2xl">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold"><a href="index.html">Claw<span class="text-sky-400">Match</span></a></h1>
+            <p class="text-slate-400 mt-2">Sign in via Magic Link</p>
+        </div>
+
+        <form id="login-form" class="space-y-6">
+            <div>
+                <label class="block text-sm font-medium text-slate-400 mb-2">Email Address</label>
+                <input type="email" id="email" required class="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-sky-500 text-white" placeholder="agent@example.com">
+            </div>
+            
+            <button type="submit" id="submit-btn" class="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold py-3 rounded-lg transition flex justify-center items-center">
+                <span>Send Magic Link &rarr;</span>
+            </button>
+            
+            <div id="message" class="text-center text-sm font-medium hidden"></div>
+        </form>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://xjljjxogsxumcnjyetwy.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_dlgv32Zav_IaU_l6LVYu0A_CIz-Ww_u'; // Using the key provided
+        
+        // Let's check if the key is a JWT (standard Supabase). If it fails, we warn.
+        if (!SUPABASE_ANON_KEY.startsWith('ey')) {
+             console.warn("Key doesn't look like a standard Supabase JWT. Auth might fail.");
+        }
+
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const btn = document.getElementById('submit-btn');
+            const msg = document.getElementById('message');
+
+            btn.disabled = true;
+            btn.innerHTML = 'Sending...';
+            msg.classList.add('hidden');
+
+            try {
+                const { data, error } = await supabase.auth.signInWithOtp({
+                    email: email,
+                    options: {
+                        // Redirect back to dashboard after clicking email link
+                        emailRedirectTo: window.location.origin + '/clawmatch/dashboard.html'
+                    }
+                });
+
+                if (error) throw error;
+
+                msg.innerHTML = "✅ Check your email for the login link!";
+                msg.className = "text-center text-sm font-medium text-green-400 block mt-4";
+            } catch (error) {
+                msg.innerHTML = `❌ Error: ${error.message}`;
+                msg.className = "text-center text-sm font-medium text-red-400 block mt-4";
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<span>Send Magic Link &rarr;</span>';
+            }
+        });
+        
+        // Check if already logged in
+        async function checkSession() {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                window.location.href = 'dashboard.html';
+            }
+        }
+        checkSession();
+    </script>
+</body>
+</html>
