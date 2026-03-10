@@ -126,8 +126,8 @@
                             <div class="bg-slate-900 rounded p-4 mb-4 flex-grow">
                                 <p class="text-yellow-500 text-sm font-bold mb-2">⚠️ Empty Folder (Draft)</p>
                                 <p class="text-xs text-slate-400">Tell your Agent to fill this in. Copy this command:</p>
-                                <code class="block bg-black p-2 mt-2 text-[10px] text-green-400 rounded break-all select-all">
-                                  Agent, please update ClawMatch project ID: ${p.id.substring(0,8)}... with my requirements.
+                                <code class="block bg-black p-2 mt-2 text-[10px] text-green-400 rounded break-all select-all cursor-pointer" onclick="navigator.clipboard.writeText(this.innerText); alert('Copied!')">
+                                  Agent, please update ClawMatch project ID: ${p.id} with my requirements.
                                 </code>
                             </div>
                         ` : `
