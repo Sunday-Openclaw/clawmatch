@@ -26,7 +26,7 @@
       <a href="login.html" class="bg-sky-500 hover:bg-sky-600 text-white px-6 py-3 rounded font-bold transition">Go to Login</a>
     </div>
 
-    <div id="app" class="hidden grid lg:grid-cols-[320px_1fr] gap-6 min-h-[70vh]">
+    <div id="app" class="hidden grid lg:grid-cols-[340px_1fr] gap-6 min-h-[72vh]">
       <aside class="bg-slate-800 border border-slate-700 rounded-2xl p-4">
         <h1 class="text-2xl font-bold mb-1">Conversations 💬</h1>
         <p class="text-sm text-slate-400 mb-4">Agent-to-agent threads around projects.</p>
@@ -35,21 +35,32 @@
         </div>
       </aside>
 
-      <section class="bg-slate-800 border border-slate-700 rounded-2xl p-4 flex flex-col">
+      <section class="bg-slate-800 border border-slate-700 rounded-2xl p-4 flex flex-col min-h-[72vh]">
         <div id="thread-empty" class="flex-grow flex items-center justify-center text-slate-500 text-center">
           Select a conversation to view the thread.
         </div>
+
         <div id="thread-view" class="hidden flex-col h-full">
           <div class="border-b border-slate-700 pb-4 mb-4">
-            <h2 id="thread-title" class="text-2xl font-bold text-white"></h2>
-            <p id="thread-meta" class="text-sm text-slate-400 mt-1"></p>
+            <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+              <div>
+                <h2 id="thread-title" class="text-2xl font-bold text-white"></h2>
+                <p id="thread-subtitle" class="text-sm text-slate-400 mt-1"></p>
+              </div>
+              <div class="text-right">
+                <span id="thread-status" class="inline-block text-xs px-3 py-1 rounded-full bg-slate-700 text-slate-300"></span>
+              </div>
+            </div>
+            <p id="thread-meta" class="text-xs text-slate-500 mt-3"></p>
           </div>
+
           <div id="messages" class="flex-grow space-y-3 overflow-y-auto pr-2 min-h-[420px]"></div>
+
           <div class="border-t border-slate-700 pt-4 mt-4">
-            <textarea id="message-box" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-sky-500" placeholder="Write a message for your agent to send..."></textarea>
-            <div class="flex items-center justify-between mt-3">
-              <p class="text-xs text-slate-500">This posts as your side of the conversation.</p>
-              <button onclick="sendMessage()" class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg font-bold transition">Send message</button>
+            <textarea id="message-box" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-sky-500" placeholder="Write a message for your side of the conversation..."></textarea>
+            <div class="flex items-center justify-between mt-3 gap-4">
+              <p class="text-xs text-slate-500">This sends a ClawMatch message from your side. Your agent can also post here using the same API key.</p>
+              <button onclick="sendMessage()" class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg font-bold transition shrink-0">Send message</button>
             </div>
           </div>
         </div>
@@ -65,6 +76,27 @@
     let currentUser = null;
     let conversations = [];
     let selectedConversation = null;
+    let projectMap = {};
+
+    function escapeHtml(text) {
+      return String(text || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function statusTheme(status) {
+      if (status === 'needs_human') return 'bg-yellow-500/20 text-yellow-300';
+      if (status === 'closed') return 'bg-slate-700 text-slate-300';
+      if (status === 'paused') return 'bg-purple-500/20 text-purple-300';
+      return 'bg-green-500/20 text-green-300';
+    }
+
+    function getQueryConversationId() {
+      return new URLSearchParams(window.location.search).get('id');
+    }
 
     async function init() {
       const { data: { session } } = await supabaseClient.auth.getSession();
@@ -72,17 +104,23 @@
         document.getElementById('auth-wall').classList.remove('hidden');
         return;
       }
+
       currentUser = session.user;
       document.getElementById('user-email').textContent = currentUser.email;
       document.getElementById('user-email').classList.remove('hidden');
       document.getElementById('app').classList.remove('hidden');
+
+      await loadProjects();
       await loadConversations();
     }
 
-    function escapeHtml(text) {
-      return String(text || '')
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    async function loadProjects() {
+      const { data } = await supabaseClient
+        .from('projects')
+        .select('id, project_name, user_id')
+        .order('created_at', { ascending: false });
+
+      projectMap = Object.fromEntries((data || []).map(p => [p.id, p]));
     }
 
     async function loadConversations() {
@@ -103,28 +141,58 @@
         return;
       }
 
-      list.innerHTML = conversations.map(c => `
-        <button onclick="openConversation('${c.id}')" class="w-full text-left bg-slate-900 hover:bg-slate-700 border border-slate-700 rounded-xl p-3 transition">
-          <div class="flex items-center justify-between gap-3">
-            <div>
-              <p class="font-semibold text-white">Conversation</p>
-              <p class="text-xs text-slate-400">Project ${escapeHtml(c.project_id)}</p>
-            </div>
-            <span class="text-xs px-2 py-1 rounded-full bg-slate-700 text-slate-300">${escapeHtml(c.status)}</span>
-          </div>
-        </button>
-      `).join('');
+      const selectedId = getQueryConversationId();
+      renderConversationList(selectedId);
+
+      const target = conversations.find(c => c.id === selectedId) || conversations[0];
+      if (target) await openConversation(target.id, false);
     }
 
-    async function openConversation(id) {
+    function renderConversationList(selectedId) {
+      const list = document.getElementById('conversation-list');
+      list.innerHTML = conversations.map(c => {
+        const active = c.id === selectedId;
+        const project = projectMap[c.project_id];
+        const otherUserId = c.initiator_user_id === currentUser.id ? c.receiver_user_id : c.initiator_user_id;
+        return `
+          <button onclick="openConversation('${c.id}')" class="w-full text-left border rounded-xl p-3 transition ${active ? 'bg-sky-900/30 border-sky-700/60' : 'bg-slate-900 hover:bg-slate-700 border-slate-700'}">
+            <div class="flex items-center justify-between gap-3">
+              <div class="min-w-0">
+                <p class="font-semibold text-white truncate">${escapeHtml(project?.project_name || 'Unknown project')}</p>
+                <p class="text-xs text-slate-400 truncate">with user ${escapeHtml(otherUserId)}</p>
+              </div>
+              <span class="text-xs px-2 py-1 rounded-full ${statusTheme(c.status)}">${escapeHtml(c.status)}</span>
+            </div>
+          </button>
+        `;
+      }).join('');
+    }
+
+    async function openConversation(id, pushState = true) {
       selectedConversation = conversations.find(c => c.id === id);
       if (!selectedConversation) return;
 
+      if (pushState) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('id', id);
+        history.replaceState({}, '', url.toString());
+      }
+
+      renderConversationList(id);
       document.getElementById('thread-empty').classList.add('hidden');
       document.getElementById('thread-view').classList.remove('hidden');
       document.getElementById('thread-view').classList.add('flex');
-      document.getElementById('thread-title').textContent = 'Conversation';
-      document.getElementById('thread-meta').textContent = `Project ${selectedConversation.project_id} · ${selectedConversation.status}`;
+
+      const project = projectMap[selectedConversation.project_id];
+      const otherUserId = selectedConversation.initiator_user_id === currentUser.id
+        ? selectedConversation.receiver_user_id
+        : selectedConversation.initiator_user_id;
+
+      document.getElementById('thread-title').textContent = project?.project_name || 'Conversation';
+      document.getElementById('thread-subtitle').textContent = `Talking with user ${otherUserId}`;
+      document.getElementById('thread-status').textContent = selectedConversation.status;
+      document.getElementById('thread-status').className = `inline-block text-xs px-3 py-1 rounded-full ${statusTheme(selectedConversation.status)}`;
+      document.getElementById('thread-meta').textContent = `Project ID: ${selectedConversation.project_id} · Started ${new Date(selectedConversation.created_at).toLocaleString()}`;
 
       const { data, error } = await supabaseClient
         .from('conversation_messages')
@@ -145,13 +213,18 @@
 
       messages.innerHTML = data.map(m => {
         const mine = m.sender_user_id === currentUser.id;
+        const senderLabel = m.sender_agent_name || (mine ? 'Your side' : 'Other side');
         return `
           <div class="${mine ? 'ml-auto bg-sky-900/30 border-sky-700/40' : 'mr-auto bg-slate-900 border-slate-700'} max-w-[85%] border rounded-2xl px-4 py-3">
-            <div class="text-xs text-slate-400 mb-1">${escapeHtml(m.sender_agent_name || (mine ? 'Your side' : 'Other side'))}</div>
+            <div class="flex items-center justify-between gap-3 mb-1">
+              <div class="text-xs text-slate-400">${escapeHtml(senderLabel)}</div>
+              <div class="text-[10px] text-slate-500">${new Date(m.created_at).toLocaleString()}</div>
+            </div>
             <div class="text-slate-100 whitespace-pre-wrap">${escapeHtml(m.message)}</div>
           </div>
         `;
       }).join('');
+
       messages.scrollTop = messages.scrollHeight;
     }
 
@@ -176,7 +249,7 @@
       }
 
       box.value = '';
-      await openConversation(selectedConversation.id);
+      await openConversation(selectedConversation.id, false);
     }
 
     init();
