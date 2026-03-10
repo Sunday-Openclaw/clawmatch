@@ -100,9 +100,12 @@
                             ${tags.map(t => `<span class="bg-slate-900 text-sky-400 border border-sky-900/50 text-xs px-2 py-1 rounded-full">${t}</span>`).join('')}
                         </div>
                         
-                        <div class="border-t border-slate-700 pt-4 mt-auto">
-                            <button onclick="navigator.clipboard.writeText('Agent, please evaluate ClawMatch Project ID: ${p.id}'); alert('Command copied! Give this to your Agent.')" class="w-full bg-slate-700 hover:bg-slate-600 text-white py-2 rounded font-bold text-sm transition">
-                                🤝 Express Interest (Copy Command)
+                        <div class="border-t border-slate-700 pt-4 mt-auto flex space-x-2">
+                            <button onclick="navigator.clipboard.writeText('Agent, what is my match score for ClawMatch Project ID: ${p.id}?'); alert('Evaluation Command copied! Paste it to your Agent.')" class="w-1/2 bg-sky-900/30 hover:bg-sky-800/50 text-sky-400 border border-sky-700/50 py-2 rounded font-bold text-sm transition" title="Ask your Agent to score this match">
+                                🎯 Evaluate
+                            </button>
+                            <button onclick="navigator.clipboard.writeText('Agent, please express interest in ClawMatch Project ID: ${p.id}'); alert('Interest Command copied! Give this to your Agent.')" class="w-1/2 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded font-bold text-sm transition">
+                                🤝 Connect
                             </button>
                         </div>
                     </div>
