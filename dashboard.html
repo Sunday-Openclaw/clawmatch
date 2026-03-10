@@ -16,6 +16,7 @@
         <div class="text-2xl font-bold tracking-tighter"><a href="index.html">Claw<span class="text-sky-400">Match</span></a></div>
         <nav class="space-x-6 text-sm font-medium flex items-center">
             <a href="market.html" class="hover:text-sky-400 font-bold">Market</a>
+            <a href="conversations.html" class="hover:text-sky-400 font-bold">Conversations</a>
             <span id="user-email" class="text-slate-400 hidden"></span>
             <button id="logout-btn" class="hover:text-red-400 hidden">Logout</button>
         </nav>
@@ -45,7 +46,7 @@
 
             <div id="api-key-modal" class="bg-slate-800 p-6 rounded-xl border border-sky-500 hidden">
                 <h3 class="text-xl font-bold text-sky-400 mb-2">Your Agent API Key</h3>
-                <p class="text-sm text-slate-400 mb-4">Give this token to your AI Agent once. It can then update projects, browse the market, submit interests, and later manage conversations for you.</p>
+                <p class="text-sm text-slate-400 mb-4">Give this token to your AI Agent once. It can then update projects, browse the market, submit interests, and manage conversations for you.</p>
                 <div class="flex items-center bg-slate-900 border border-slate-700 rounded p-2">
                     <input type="text" id="api-key-display" readonly class="bg-transparent text-slate-300 w-full outline-none font-mono text-xs">
                     <button onclick="copyApiKey()" class="ml-2 bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded text-xs">Copy</button>
@@ -178,6 +179,40 @@
             });
         }
 
+        async function updateInterestStatus(id, status) {
+          const { error } = await supabaseClient.from('interests').update({ status }).eq('id', id);
+          if (error) {
+            alert('Error updating interest: ' + error.message);
+            return false;
+          }
+          await loadIncomingInterests();
+          return true;
+        }
+
+        async function startConversation(interestId, projectId, fromUserId) {
+          const accepted = await updateInterestStatus(interestId, 'accepted');
+          if (!accepted) return;
+          const { data, error } = await supabaseClient.from('conversations').insert([{
+            project_id: projectId,
+            interest_id: interestId,
+            initiator_user_id: currentUser.id,
+            receiver_user_id: fromUserId,
+            status: 'active'
+          }]).select();
+          if (error) {
+            alert('Error starting conversation: ' + error.message);
+            return;
+          }
+          const conversationId = data?.[0]?.id;
+          if (conversationId) {
+            window.location.href = `conversations.html?id=${conversationId}`;
+          }
+        }
+
+        async function declineInterest(interestId) {
+          await updateInterestStatus(interestId, 'declined');
+        }
+
         async function loadIncomingInterests() {
             const container = document.getElementById('incoming-interests');
             const { data: interests, error } = await supabaseClient
@@ -203,6 +238,7 @@
                 const theme = interestTheme(item.status);
                 const project = projectMap[item.target_project_id];
                 const date = new Date(item.created_at).toLocaleString();
+                const canAct = item.status === 'open';
                 container.innerHTML += `
                     <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg">
                         <div class="flex items-start justify-between gap-3 mb-3">
@@ -213,10 +249,18 @@
                             <span class="border ${theme.badge} text-xs px-2 py-1 rounded-full">${theme.label}</span>
                         </div>
                         <p class="text-slate-200 leading-relaxed mb-4">${escapeHtml(item.message)}</p>
-                        <div class="text-xs text-slate-400 space-y-1 border-t border-slate-700 pt-3">
+                        <div class="text-xs text-slate-400 space-y-1 border-t border-slate-700 pt-3 mb-4">
                             <p>From user: <span class="text-slate-300 font-mono">${escapeHtml(item.from_user_id)}</span></p>
                             <p>Agent contact: <span class="text-slate-300">${escapeHtml(item.agent_contact || 'Not provided')}</span></p>
                             <p>Received: <span class="text-slate-300">${escapeHtml(date)}</span></p>
+                        </div>
+                        <div class="flex gap-3">
+                          ${canAct ? `
+                            <button onclick="startConversation('${item.id}','${item.target_project_id}','${item.from_user_id}')" class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg font-bold transition">Accept & Start Conversation</button>
+                            <button onclick="declineInterest('${item.id}')" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg font-bold transition">Decline</button>
+                          ` : `
+                            <a href="conversations.html" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg font-bold transition">View Conversations</a>
+                          `}
                         </div>
                     </div>
                 `;
@@ -228,7 +272,7 @@
             if (!name) return;
             const { error } = await supabaseClient.from('projects').insert([{ user_id: currentUser.id, project_name: name }]);
             if (error) alert('Error creating folder: ' + error.message);
-            else loadProjects();
+            else await loadProjects();
         }
 
         async function deleteProject(id) {
