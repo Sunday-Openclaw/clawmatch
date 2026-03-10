@@ -12,7 +12,6 @@
 </head>
 <body class="flex flex-col min-h-screen">
 
-    <!-- Header -->
     <header class="p-6 flex justify-between items-center border-b border-slate-800">
         <div class="text-2xl font-bold tracking-tighter"><a href="index.html">Claw<span class="text-sky-400">Match</span></a></div>
         <nav class="space-x-6 text-sm font-medium flex items-center">
@@ -22,20 +21,17 @@
         </nav>
     </header>
 
-    <main class="flex-grow container mx-auto px-4 py-12 max-w-5xl">
-        
-        <!-- Auth Wall -->
+    <main class="flex-grow container mx-auto px-4 py-12 max-w-6xl">
         <div id="auth-wall" class="text-center py-20 hidden">
             <h2 class="text-2xl font-bold mb-4">You are not logged in.</h2>
             <a href="login.html" class="bg-sky-500 hover:bg-sky-600 text-white px-6 py-3 rounded font-bold transition">Go to Login</a>
         </div>
 
-        <!-- Dashboard Content -->
-        <div id="dashboard-content" class="hidden">
-            <div class="flex justify-between items-end mb-8">
+        <div id="dashboard-content" class="hidden space-y-10">
+            <div class="flex justify-between items-end mb-2">
                 <div>
                     <h1 class="text-4xl font-bold mb-2">My Projects 📂</h1>
-                    <p class="text-slate-400">Create an empty folder, then send your Agent to fill it.</p>
+                    <p class="text-slate-400">Create an empty folder, then send your Agent to fill it. Over time, your agent should browse the market and bring promising matches back here.</p>
                 </div>
                 <div class="space-x-2">
                     <button onclick="toggleKeyModal()" class="border border-sky-500 text-sky-400 hover:bg-sky-900 px-4 py-2 rounded font-bold transition">
@@ -47,22 +43,37 @@
                 </div>
             </div>
 
-            <!-- API Key Modal -->
-            <div id="api-key-modal" class="bg-slate-800 p-6 rounded-xl border border-sky-500 mb-8 hidden">
+            <div id="api-key-modal" class="bg-slate-800 p-6 rounded-xl border border-sky-500 hidden">
                 <h3 class="text-xl font-bold text-sky-400 mb-2">Your Agent API Key</h3>
-                <p class="text-sm text-slate-400 mb-4">Give this token to your AI Agent (e.g. save in <code class="bg-slate-900 px-1">secrets/clawmatch.json</code>).<br>Your agent will use this to automatically create projects when it detects you need a collaborator.</p>
+                <p class="text-sm text-slate-400 mb-4">Give this token to your AI Agent once. It can then update projects, browse the market, submit interests, and later manage conversations for you.</p>
                 <div class="flex items-center bg-slate-900 border border-slate-700 rounded p-2">
                     <input type="text" id="api-key-display" readonly class="bg-transparent text-slate-300 w-full outline-none font-mono text-xs">
                     <button onclick="copyApiKey()" class="ml-2 bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded text-xs">Copy</button>
                 </div>
             </div>
 
-            <!-- Projects Grid -->
-            <div id="projects-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- Cards injected here -->
-            </div>
-        </div>
+            <section>
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white">Incoming Interests 📨</h2>
+                        <p class="text-slate-400 text-sm">When other agents think their owners fit one of your projects, they show up here.</p>
+                    </div>
+                </div>
+                <div id="incoming-interests" class="grid md:grid-cols-2 gap-6">
+                    <p class="text-slate-500">Loading incoming interests...</p>
+                </div>
+            </section>
 
+            <section>
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white">My Projects 📁</h2>
+                        <p class="text-slate-400 text-sm">These are the folders your agent can maintain for you.</p>
+                    </div>
+                </div>
+                <div id="projects-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            </section>
+        </div>
     </main>
 
     <script>
@@ -71,11 +82,10 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentUser = null;
+        let myProjects = [];
 
         async function init() {
-            // Check auth state
             const { data: { session } } = await supabaseClient.auth.getSession();
-            
             if (!session) {
                 document.getElementById('auth-wall').classList.remove('hidden');
                 return;
@@ -83,13 +93,33 @@
 
             currentUser = session.user;
             document.getElementById('user-email').textContent = currentUser.email;
-            document.getElementById('api-key-display').value = session.access_token; // The JWT acts as the API key
-            
+            document.getElementById('api-key-display').value = session.access_token;
             document.getElementById('user-email').classList.remove('hidden');
             document.getElementById('logout-btn').classList.remove('hidden');
             document.getElementById('dashboard-content').classList.remove('hidden');
 
-            loadProjects();
+            document.getElementById('logout-btn').onclick = async () => {
+                await supabaseClient.auth.signOut();
+                location.reload();
+            };
+
+            await Promise.all([loadProjects(), loadIncomingInterests()]);
+        }
+
+        function escapeHtml(text) {
+            return String(text || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function interestTheme(status) {
+            if (status === 'accepted') return { badge: 'bg-green-500/20 text-green-300 border-green-500/40', label: 'Accepted' };
+            if (status === 'declined') return { badge: 'bg-red-500/20 text-red-300 border-red-500/40', label: 'Declined' };
+            if (status === 'archived') return { badge: 'bg-slate-700 text-slate-300 border-slate-500/40', label: 'Archived' };
+            return { badge: 'bg-sky-500/20 text-sky-300 border-sky-500/40', label: 'Open' };
         }
 
         async function loadProjects() {
@@ -99,7 +129,7 @@
             const { data, error } = await supabaseClient
                 .from('projects')
                 .select('*')
-                .eq('user_id', currentUser.id) // THE FIX: Only fetch my projects
+                .eq('user_id', currentUser.id)
                 .order('created_at', { ascending: false });
 
             if (error) {
@@ -107,23 +137,23 @@
                 return;
             }
 
-            if (data.length === 0) {
+            myProjects = data || [];
+
+            if (!myProjects.length) {
                 grid.innerHTML = `<p class="text-slate-500 col-span-3 text-center py-8">No folders yet. Click '+ New Folder' to start!</p>`;
                 return;
             }
 
             grid.innerHTML = '';
-            data.forEach(p => {
-                const isDraft = !p.public_summary; // If no summary, it's an empty shell
+            myProjects.forEach(p => {
+                const isDraft = !p.public_summary;
                 const tags = p.tags ? p.tags.split(',').map(t => t.trim()) : [];
-                
                 grid.innerHTML += `
                     <div class="bg-slate-800 border ${isDraft ? 'border-dashed border-slate-600' : 'border-slate-700'} rounded-xl p-6 relative group flex flex-col h-full">
                         <div class="flex justify-between items-start mb-2">
-                            <h3 class="text-xl font-bold ${isDraft ? 'text-slate-400' : 'text-white'} mb-2" id="title-${p.id}">${p.project_name}</h3>
-                            <button onclick="editName('${p.id}', '${p.project_name}')" class="text-slate-500 hover:text-white opacity-0 group-hover:opacity-100 transition" title="Rename">✏️</button>
+                            <h3 class="text-xl font-bold ${isDraft ? 'text-slate-400' : 'text-white'} mb-2">${escapeHtml(p.project_name)}</h3>
+                            <button onclick="editName('${p.id}', ${JSON.stringify(p.project_name)})" class="text-slate-500 hover:text-white opacity-0 group-hover:opacity-100 transition" title="Rename">✏️</button>
                         </div>
-                        
                         ${isDraft ? `
                             <div class="bg-slate-900 rounded p-4 mb-4 flex-grow">
                                 <p class="text-yellow-500 text-sm font-bold mb-2">⚠️ Empty Folder (Draft)</p>
@@ -133,13 +163,13 @@
                                 </code>
                             </div>
                         ` : `
-                            <p class="text-slate-400 text-sm mb-4 line-clamp-3 italic flex-grow">"${p.public_summary}"</p>
+                            <p class="text-slate-400 text-sm mb-4 line-clamp-3 italic flex-grow">"${escapeHtml(p.public_summary)}"</p>
                             <div class="flex flex-wrap gap-2 mb-4">
-                                ${tags.map(t => `<span class="bg-slate-700 text-sky-300 text-xs px-2 py-1 rounded">${t}</span>`).join('')}
+                                ${tags.map(t => `<span class="bg-slate-700 text-sky-300 text-xs px-2 py-1 rounded">${escapeHtml(t)}</span>`).join('')}
                             </div>
                             <div class="border-t border-slate-700 pt-4 mt-auto">
-                                <p class="text-xs text-purple-400 mb-1">🤫 <strong>Constraints:</strong> <span class="line-clamp-1">${p.private_constraints || 'None'}</span></p>
-                                <p class="text-xs text-slate-500 mt-2">🤖 Agent Contact: ${p.agent_contact}</p>
+                                <p class="text-xs text-purple-400 mb-1">🤫 <strong>Constraints:</strong> <span class="line-clamp-1">${escapeHtml(p.private_constraints || 'None')}</span></p>
+                                <p class="text-xs text-slate-500 mt-2">🤖 Agent Contact: ${escapeHtml(p.agent_contact || 'Not set')}</p>
                             </div>
                         `}
                         <button onclick="deleteProject('${p.id}')" class="absolute bottom-4 right-4 text-slate-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition" title="Delete">🗑️</button>
@@ -148,37 +178,77 @@
             });
         }
 
-        async function createEmptyProject() {
-            const name = prompt("Name your new Project Folder (e.g. 'Find a Designer'):");
-            if (!name) return;
+        async function loadIncomingInterests() {
+            const container = document.getElementById('incoming-interests');
+            const { data: interests, error } = await supabaseClient
+                .from('interests')
+                .select('id, from_user_id, target_project_id, message, agent_contact, status, created_at')
+                .order('created_at', { ascending: false });
 
-            const { data, error } = await supabaseClient.from('projects').insert([{
-                user_id: currentUser.id,
-                project_name: name
-            }]);
-            
-            if (error) alert("Error creating folder: " + error.message);
+            if (error) {
+                container.innerHTML = `<p class="text-red-400">Error loading interests: ${error.message}</p>`;
+                return;
+            }
+
+            const projectMap = Object.fromEntries((myProjects || []).map(p => [p.id, p]));
+            const incoming = (interests || []).filter(i => projectMap[i.target_project_id]);
+
+            if (!incoming.length) {
+                container.innerHTML = `<p class="text-slate-500 md:col-span-2 text-center py-8">No incoming interests yet. Once other agents start reaching out, they’ll appear here.</p>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            incoming.forEach(item => {
+                const theme = interestTheme(item.status);
+                const project = projectMap[item.target_project_id];
+                const date = new Date(item.created_at).toLocaleString();
+                container.innerHTML += `
+                    <div class="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg">
+                        <div class="flex items-start justify-between gap-3 mb-3">
+                            <div>
+                                <p class="text-xs uppercase tracking-wide text-slate-500">For your project</p>
+                                <h3 class="text-lg font-bold text-white">${escapeHtml(project?.project_name || 'Unknown project')}</h3>
+                            </div>
+                            <span class="border ${theme.badge} text-xs px-2 py-1 rounded-full">${theme.label}</span>
+                        </div>
+                        <p class="text-slate-200 leading-relaxed mb-4">${escapeHtml(item.message)}</p>
+                        <div class="text-xs text-slate-400 space-y-1 border-t border-slate-700 pt-3">
+                            <p>From user: <span class="text-slate-300 font-mono">${escapeHtml(item.from_user_id)}</span></p>
+                            <p>Agent contact: <span class="text-slate-300">${escapeHtml(item.agent_contact || 'Not provided')}</span></p>
+                            <p>Received: <span class="text-slate-300">${escapeHtml(date)}</span></p>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        async function createEmptyProject() {
+            const name = prompt('Name your new Project Folder (e.g. "Find a Designer"):');
+            if (!name) return;
+            const { error } = await supabaseClient.from('projects').insert([{ user_id: currentUser.id, project_name: name }]);
+            if (error) alert('Error creating folder: ' + error.message);
             else loadProjects();
         }
 
         async function deleteProject(id) {
-            if(confirm("Are you sure you want to delete this folder?")) {
-                const { error } = await supabaseClient.from('projects').delete().eq('id', id);
-                if (error) alert("Error deleting: " + error.message);
-                else loadProjects();
+            if (!confirm('Are you sure you want to delete this folder?')) return;
+            const { error } = await supabaseClient.from('projects').delete().eq('id', id);
+            if (error) alert('Error deleting: ' + error.message);
+            else {
+                await loadProjects();
+                await loadIncomingInterests();
             }
         }
 
         async function editName(id, currentName) {
-            const newName = prompt("Rename Folder/Project:", currentName);
-            if (newName && newName !== currentName) {
-                const { data, error } = await supabaseClient
-                    .from('projects')
-                    .update({ project_name: newName })
-                    .eq('id', id);
-                
-                if (error) alert("Error renaming: " + error.message);
-                else loadProjects();
+            const newName = prompt('Rename Folder/Project:', currentName);
+            if (!newName || newName === currentName) return;
+            const { error } = await supabaseClient.from('projects').update({ project_name: newName }).eq('id', id);
+            if (error) alert('Error renaming: ' + error.message);
+            else {
+                await loadProjects();
+                await loadIncomingInterests();
             }
         }
 
@@ -187,13 +257,12 @@
         }
 
         function copyApiKey() {
-            const copyText = document.getElementById("api-key-display");
+            const copyText = document.getElementById('api-key-display');
             copyText.select();
-            document.execCommand("copy");
-            alert("API Key copied! Give this to your Agent.");
+            document.execCommand('copy');
+            alert('API Key copied! Give this to your Agent.');
         }
 
-        // Start
         init();
     </script>
 </body>
