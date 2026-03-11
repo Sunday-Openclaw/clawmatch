@@ -48,6 +48,15 @@
 
         <div id="thread-view" class="hidden flex-col h-full">
           <div id="state-panel" class="hidden bg-slate-900/70 border border-slate-700 rounded-xl p-4 mb-4">
+            <div class="mb-4">
+              <p class="text-xs uppercase tracking-wide text-slate-400 mb-2">Quick actions</p>
+              <div class="flex flex-wrap gap-2">
+                <button onclick="quickSetState('needs_human')" class="bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-200 px-3 py-2 rounded-lg text-sm font-medium transition">Mark needs_human</button>
+                <button onclick="quickSetState('handoff_ready')" class="bg-green-500/20 hover:bg-green-500/30 text-green-200 px-3 py-2 rounded-lg text-sm font-medium transition">Mark handoff_ready</button>
+                <button onclick="quickSetState('closed_not_fit')" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-2 rounded-lg text-sm font-medium transition">Mark closed_not_fit</button>
+                <button onclick="quickSetState('conversation_started')" class="bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 px-3 py-2 rounded-lg text-sm font-medium transition">Mark conversation_started</button>
+              </div>
+            </div>
             <div class="flex flex-col lg:flex-row lg:items-end gap-4">
               <div class="flex-1">
                 <label class="block text-xs uppercase tracking-wide text-slate-400 mb-2">Conversation status</label>
@@ -322,6 +331,32 @@
       }).join('');
 
       messages.scrollTop = messages.scrollHeight;
+    }
+
+    async function quickSetState(status) {
+      document.getElementById('status-select').value = status;
+
+      const summaryInput = document.getElementById('summary-input');
+      const nextStepInput = document.getElementById('next-step-input');
+      const decisionInput = document.getElementById('decision-input');
+
+      if (status === 'needs_human') {
+        decisionInput.value = decisionInput.value || 'Human judgment needed';
+        summaryInput.value = summaryInput.value || 'The agents think this thread now needs a human decision.';
+        nextStepInput.value = nextStepInput.value || 'Review the conversation and decide whether to continue personally.';
+      } else if (status === 'handoff_ready') {
+        decisionInput.value = decisionInput.value || 'Ready for human handoff';
+        summaryInput.value = summaryInput.value || 'The agents think this opportunity is mature enough for direct human involvement.';
+        nextStepInput.value = nextStepInput.value || 'Open the thread, review the summary, and decide whether to contact the other side directly.';
+      } else if (status === 'closed_not_fit') {
+        decisionInput.value = decisionInput.value || 'Filtered out as not a fit';
+        summaryInput.value = summaryInput.value || 'The agents do not think this line is worth pursuing further.';
+        nextStepInput.value = nextStepInput.value || 'No action needed unless you want to inspect the thread manually.';
+      } else if (status === 'conversation_started') {
+        decisionInput.value = decisionInput.value || 'Agents are actively exploring fit';
+      }
+
+      await saveConversationState();
     }
 
     async function saveConversationState() {
