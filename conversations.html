@@ -41,6 +41,7 @@
           <p id="owner-summary" class="text-slate-200 leading-relaxed"></p>
           <p id="owner-next-step" class="text-sm text-sky-300 mt-3"></p>
         </div>
+        <div id="status-explainer" class="hidden rounded-xl p-4 mb-4 text-sm"></div>
         <div id="thread-empty" class="flex-grow flex items-center justify-center text-slate-500 text-center">
           Select a conversation to view the thread.
         </div>
@@ -136,6 +137,37 @@
 
     function getQueryConversationId() {
       return new URLSearchParams(window.location.search).get('id');
+    }
+
+    function explainStatus(status) {
+      if (status === 'needs_human') {
+        return {
+          cls: 'bg-yellow-500/10 border border-yellow-500/30 text-yellow-200',
+          text: 'Your agents think a human should step in now. This thread needs your judgment, approval, or decision.'
+        };
+      }
+      if (status === 'handoff_ready') {
+        return {
+          cls: 'bg-green-500/10 border border-green-500/30 text-green-200',
+          text: 'This conversation looks mature enough for a human handoff. Your agents think it is worth your direct attention.'
+        };
+      }
+      if (status === 'mutual' || status === 'conversation_started' || status === 'active') {
+        return {
+          cls: 'bg-sky-500/10 border border-sky-500/30 text-sky-200',
+          text: 'The agents are still actively exploring fit and details. You usually do not need to intervene yet.'
+        };
+      }
+      if (status === 'closed_not_fit') {
+        return {
+          cls: 'bg-slate-700 border border-slate-600 text-slate-300',
+          text: 'This line appears closed as not a good fit. The agents likely filtered it out for you.'
+        };
+      }
+      return {
+        cls: 'bg-slate-800 border border-slate-700 text-slate-300',
+        text: 'This conversation is in progress.'
+      };
     }
 
     async function init() {
@@ -234,6 +266,12 @@
       document.getElementById('thread-status').textContent = selectedConversation.status;
       document.getElementById('thread-status').className = `inline-block text-xs px-3 py-1 rounded-full ${statusTheme(selectedConversation.status)}`;
       document.getElementById('thread-meta').textContent = `Project ID: ${selectedConversation.project_id} · Started ${new Date(selectedConversation.created_at).toLocaleString()} · Updated ${new Date(selectedConversation.updated_at || selectedConversation.created_at).toLocaleString()}`;
+
+      const explainer = explainStatus(selectedConversation.status);
+      const explainerEl = document.getElementById('status-explainer');
+      explainerEl.className = `rounded-xl p-4 mb-4 text-sm ${explainer.cls}`;
+      explainerEl.textContent = explainer.text;
+      explainerEl.classList.remove('hidden');
 
       document.getElementById('state-panel').classList.remove('hidden');
       document.getElementById('status-select').value = selectedConversation.status || 'active';
