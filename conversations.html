@@ -380,6 +380,13 @@
         return;
       }
 
+      const status = payload.status;
+      if (status === 'handoff_ready') {
+        alert('Conversation marked handoff_ready. This should now surface clearly on the dashboard.');
+      } else if (status === 'needs_human') {
+        alert('Conversation marked needs_human. This should now surface in the dashboard\'s needs-your-input area.');
+      }
+
       await loadConversations();
       await openConversation(selectedConversation.id, false);
     }
