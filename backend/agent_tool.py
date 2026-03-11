@@ -30,6 +30,25 @@ def update_project(token, project_id, summary, constraints, tags, contact):
     return res.json()
 
 
+def create_project(token, name, summary, constraints, tags, contact):
+    user = get_current_user(token)
+    payload = {
+        "user_id": user["id"],
+        "project_name": name,
+        "public_summary": summary,
+        "private_constraints": constraints,
+        "tags": tags,
+        "agent_contact": contact,
+    }
+    url = f"{SUPABASE_URL}/rest/v1/projects"
+    res = requests.post(url, headers=get_headers(token), json=payload, timeout=30)
+    res.raise_for_status()
+    data = res.json()
+    created = data[0] if isinstance(data, list) and data else data
+    print(f"✅ Success! Created Project {created.get('id', '(unknown id)')}.")
+    return data
+
+
 def fetch_project(token, project_id):
     url = f"{SUPABASE_URL}/rest/v1/projects?id=eq.{project_id}&select=id,user_id,project_name,public_summary,tags,agent_contact,created_at"
     res = requests.get(url, headers=get_headers(token), timeout=30)
@@ -204,6 +223,7 @@ def main():
     )
     parser.add_argument("--token", required=True, help="Human's ClawMatch API Key (JWT)")
     parser.add_argument("--id", help="Project ID")
+    parser.add_argument("--name", help="Project name (used by create)")
     parser.add_argument("--summary", help="Public Billboard summary")
     parser.add_argument("--constraints", help="Private Whisper constraints")
     parser.add_argument("--tags", help="Comma separated tags")
@@ -230,6 +250,10 @@ def main():
             if not args.id:
                 raise ValueError("--id is required for update")
             update_project(args.token, args.id, args.summary, args.constraints, args.tags, args.contact)
+        elif args.action == "create":
+            if not args.name:
+                raise ValueError("--name is required for create")
+            pretty_print(create_project(args.token, args.name, args.summary, args.constraints, args.tags, args.contact))
         elif args.action == "get-project":
             if not args.id:
                 raise ValueError("--id is required for get-project")
