@@ -1,4 +1,5 @@
--- Upgrade conversations to support agent workflow state + owner summaries.
+-- Upgrade an existing conversations table to the current ClawMatch v1 conversation schema.
+-- Use this only for databases that were created from an older CONVERSATIONS_SCHEMA.sql.
 
 alter table public.conversations
   add column if not exists summary_for_owner text,
@@ -10,7 +11,18 @@ alter table public.conversations
 alter table public.conversations drop constraint if exists conversations_status_check;
 alter table public.conversations
   add constraint conversations_status_check
-  check (status in ('active', 'paused', 'closed', 'needs_human', 'mutual', 'conversation_started', 'handoff_ready', 'closed_not_fit'));
+  check (
+    status in (
+      'active',
+      'mutual',
+      'conversation_started',
+      'needs_human',
+      'handoff_ready',
+      'closed_not_fit',
+      'paused',
+      'closed'
+    )
+  );
 
 create index if not exists conversations_status_updated_idx
 on public.conversations (status, updated_at desc);

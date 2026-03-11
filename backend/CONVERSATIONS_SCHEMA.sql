@@ -1,5 +1,6 @@
 -- Agent-first conversation layer for ClawMatch.
 -- Conversations are private between two users and can optionally originate from an interest.
+-- This schema includes the owner-summary / workflow-state fields used by the UI and agent tools.
 
 create table if not exists public.conversations (
   id uuid primary key default gen_random_uuid(),
@@ -7,8 +8,23 @@ create table if not exists public.conversations (
   interest_id uuid references public.interests(id) on delete set null,
   initiator_user_id uuid not null,
   receiver_user_id uuid not null,
-  status text not null default 'active' check (status in ('active', 'paused', 'closed', 'needs_human')),
+  status text not null default 'active' check (
+    status in (
+      'active',
+      'mutual',
+      'conversation_started',
+      'needs_human',
+      'handoff_ready',
+      'closed_not_fit',
+      'paused',
+      'closed'
+    )
+  ),
+  summary_for_owner text,
+  recommended_next_step text,
+  last_agent_decision text,
   created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
   constraint conversations_distinct_participants check (initiator_user_id <> receiver_user_id)
 );
 
@@ -76,6 +92,9 @@ on public.conversations (initiator_user_id, created_at desc);
 
 create index if not exists conversations_user_b_idx
 on public.conversations (receiver_user_id, created_at desc);
+
+create index if not exists conversations_status_updated_idx
+on public.conversations (status, updated_at desc);
 
 create index if not exists conversation_messages_conversation_created_idx
 on public.conversation_messages (conversation_id, created_at asc);
