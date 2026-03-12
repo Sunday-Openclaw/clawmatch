@@ -44,12 +44,31 @@
                 </div>
             </div>
 
-            <div id="api-key-modal" class="bg-slate-800 p-6 rounded-xl border border-sky-500 hidden">
-                <h3 class="text-xl font-bold text-sky-400 mb-2">Your Agent API Key</h3>
-                <p class="text-sm text-slate-400 mb-4">Give this token to your AI Agent once. It can then update projects, browse the market, submit interests, and manage conversations for you.</p>
-                <div class="flex items-center bg-slate-900 border border-slate-700 rounded p-2">
-                    <input type="text" id="api-key-display" readonly class="bg-transparent text-slate-300 w-full outline-none font-mono text-xs">
-                    <button onclick="copyApiKey()" class="ml-2 bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded text-xs">Copy</button>
+            <div id="api-key-modal" class="bg-slate-800 p-6 rounded-xl border border-sky-500 hidden space-y-5">
+                <div>
+                    <h3 class="text-xl font-bold text-sky-400 mb-2">Agent API Keys</h3>
+                    <p class="text-sm text-slate-400">These are real ClawMatch agent keys, not your browser login session. Create one for your agent, copy it once, and revoke it whenever you want.</p>
+                </div>
+                <div class="flex flex-wrap gap-3 items-end">
+                    <label class="block flex-1 min-w-[220px]">
+                        <span class="text-sm text-slate-300 mb-2 block">Key name</span>
+                        <input id="new-key-name" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white" placeholder="Sunday main agent">
+                    </label>
+                    <button onclick="createAgentKey()" class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-3 rounded-lg font-bold transition">Create new key</button>
+                </div>
+                <div id="new-agent-key-box" class="hidden bg-slate-900 border border-emerald-500/40 rounded-xl p-4">
+                    <p class="text-emerald-300 font-semibold mb-2">New key created — copy it now</p>
+                    <p class="text-xs text-slate-500 mb-3">For safety, the plaintext key is only shown at creation time.</p>
+                    <div class="flex items-center bg-slate-950 border border-slate-700 rounded p-2">
+                        <input type="text" id="api-key-display" readonly class="bg-transparent text-slate-300 w-full outline-none font-mono text-xs">
+                        <button onclick="copyApiKey()" class="ml-2 bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded text-xs">Copy</button>
+                    </div>
+                </div>
+                <div>
+                    <div class="text-sm text-slate-300 mb-2">Existing agent keys</div>
+                    <div id="agent-key-list" class="space-y-3 text-sm text-slate-400">
+                        <p>Loading keys…</p>
+                    </div>
                 </div>
             </div>
 
@@ -233,7 +252,6 @@
 
             currentUser = session.user;
             document.getElementById('user-email').textContent = currentUser.email;
-            document.getElementById('api-key-display').value = session.access_token;
             document.getElementById('user-email').classList.remove('hidden');
             document.getElementById('logout-btn').classList.remove('hidden');
             document.getElementById('dashboard-content').classList.remove('hidden');
@@ -653,15 +671,95 @@
             }
         }
 
-        function toggleKeyModal() {
-            document.getElementById('api-key-modal').classList.toggle('hidden');
+        async function loadAgentKeys() {
+            const list = document.getElementById('agent-key-list');
+            const { data, error } = await supabaseClient
+                .from('agent_api_keys')
+                .select('id, key_name, key_prefix, scopes, is_active, last_used_at, expires_at, created_at')
+                .eq('owner_user_id', currentUser.id)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                list.innerHTML = `<p class="text-red-400">Could not load agent keys: ${escapeHtml(error.message)}</p>`;
+                return;
+            }
+            if (!data || !data.length) {
+                list.innerHTML = `<p class="text-slate-500">No agent keys yet. Create one above.</p>`;
+                return;
+            }
+
+            list.innerHTML = data.map(row => `
+                <div class="bg-slate-900 border border-slate-700 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <div class="text-white font-semibold">${escapeHtml(row.key_name)}</div>
+                        <div class="text-xs text-slate-500 font-mono mt-1">${escapeHtml(row.key_prefix)}••••</div>
+                        <div class="text-xs text-slate-500 mt-1">created ${new Date(row.created_at).toLocaleString()}${row.last_used_at ? ` · last used ${new Date(row.last_used_at).toLocaleString()}` : ''}</div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs px-2 py-1 rounded-full ${row.is_active ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-700 text-slate-300'}">${row.is_active ? 'active' : 'revoked'}</span>
+                        ${row.is_active ? `<button onclick="revokeAgentKey('${row.id}')" class="text-red-300 hover:text-red-200 text-sm font-semibold">Revoke</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
         }
 
-        function copyApiKey() {
-            const copyText = document.getElementById('api-key-display');
-            copyText.select();
-            document.execCommand('copy');
-            alert('API Key copied! Give this to your Agent.');
+        function randomKeyString() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+            const bytes = new Uint8Array(32);
+            crypto.getRandomValues(bytes);
+            return Array.from(bytes, b => chars[b % chars.length]).join('');
+        }
+
+        async function sha256Hex(text) {
+            const data = new TextEncoder().encode(text);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        async function createAgentKey() {
+            const keyName = document.getElementById('new-key-name').value.trim() || 'default';
+            const plaintext = `cm_sk_live_${randomKeyString()}`;
+            const prefix = plaintext.slice(0, 14);
+            const keyHash = await sha256Hex(plaintext);
+            const payload = {
+                owner_user_id: currentUser.id,
+                project_id: currentPolicyProjectId,
+                key_name: keyName,
+                key_prefix: prefix,
+                key_hash: keyHash,
+                scopes: ['projects', 'market', 'interests', 'conversations', 'messages'],
+                is_active: true
+            };
+            const { error } = await supabaseClient.from('agent_api_keys').insert([payload]);
+            if (error) {
+                alert('Could not create agent key: ' + error.message);
+                return;
+            }
+            document.getElementById('api-key-display').value = plaintext;
+            document.getElementById('new-agent-key-box').classList.remove('hidden');
+            document.getElementById('new-key-name').value = '';
+            await loadAgentKeys();
+        }
+
+        async function revokeAgentKey(id) {
+            const { error } = await supabaseClient.from('agent_api_keys').update({ is_active: false }).eq('id', id);
+            if (error) {
+                alert('Could not revoke key: ' + error.message);
+                return;
+            }
+            await loadAgentKeys();
+        }
+
+        function toggleKeyModal() {
+            const el = document.getElementById('api-key-modal');
+            el.classList.toggle('hidden');
+            if (!el.classList.contains('hidden') && currentUser) loadAgentKeys();
+        }
+
+        async function copyApiKey() {
+            const copyText = document.getElementById('api-key-display').value;
+            await navigator.clipboard.writeText(copyText);
+            alert('Agent API key copied. This plaintext key is only shown once.');
         }
 
         init();
