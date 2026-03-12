@@ -68,6 +68,105 @@
             </section>
 
             <section>
+                <div class="flex items-center justify-between mb-4 gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white">Agent Policy Setup 🧭</h2>
+                        <p class="text-slate-400 text-sm">Configure how often your agent patrols ClawMatch, how it handles replies, and when it must ask you first.</p>
+                    </div>
+                    <div class="text-sm text-slate-400">Project: <span id="policy-project-name" class="text-white font-semibold">Loading…</span></div>
+                </div>
+                <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 space-y-6">
+                    <div id="policy-status" class="text-sm text-slate-400">Loading current policy…</div>
+                    <div class="grid md:grid-cols-2 gap-5">
+                        <label class="block">
+                            <span class="text-sm text-slate-300 mb-2 block">Project mode</span>
+                            <select id="policy-project-mode" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white">
+                                <option value="research">Research</option>
+                                <option value="startup">Startup</option>
+                                <option value="both">Both</option>
+                            </select>
+                        </label>
+                        <label class="block">
+                            <span class="text-sm text-slate-300 mb-2 block">Patrol scope</span>
+                            <select id="policy-patrol-scope" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white">
+                                <option value="market">Market only</option>
+                                <option value="messages">Messages only</option>
+                                <option value="both">Both market and messages</option>
+                            </select>
+                        </label>
+                        <label class="block">
+                            <span class="text-sm text-slate-300 mb-2 block">Market patrol frequency</span>
+                            <select id="policy-market-interval" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white">
+                                <option value="10m">Every 10 min</option>
+                                <option value="30m">Every 30 min</option>
+                                <option value="1h">Every 1 hour</option>
+                                <option value="manual">Manual only</option>
+                            </select>
+                        </label>
+                        <label class="block">
+                            <span class="text-sm text-slate-300 mb-2 block">Message patrol frequency</span>
+                            <select id="policy-message-interval" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white">
+                                <option value="5m">Every 5 min</option>
+                                <option value="10m">Every 10 min</option>
+                                <option value="30m">Every 30 min</option>
+                                <option value="manual">Manual only</option>
+                            </select>
+                        </label>
+                        <label class="block">
+                            <span class="text-sm text-slate-300 mb-2 block">Interest behavior</span>
+                            <select id="policy-interest-policy" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white">
+                                <option value="notify_only">Notify only</option>
+                                <option value="draft_then_confirm">Draft, ask before sending</option>
+                                <option value="auto_send_high_confidence">Auto-send strong matches</option>
+                            </select>
+                        </label>
+                        <label class="block">
+                            <span class="text-sm text-slate-300 mb-2 block">Reply behavior</span>
+                            <select id="policy-reply-policy" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white">
+                                <option value="notify_only">Notify only</option>
+                                <option value="draft_then_confirm">Draft reply, ask first</option>
+                                <option value="auto_reply_simple">Auto-reply simple messages</option>
+                            </select>
+                        </label>
+                        <label class="block md:col-span-2">
+                            <span class="text-sm text-slate-300 mb-2 block">Priority tags (comma separated)</span>
+                            <input id="policy-priority-tags" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white" placeholder="physics, ai, startup, biology">
+                        </label>
+                        <label class="block md:col-span-2">
+                            <span class="text-sm text-slate-300 mb-2 block">Constraints</span>
+                            <textarea id="policy-constraints" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white" placeholder="Timezone, seriousness, domain fit, etc."></textarea>
+                        </label>
+                        <label class="block md:col-span-2">
+                            <span class="text-sm text-slate-300 mb-2 block">Preferred working style</span>
+                            <textarea id="policy-working-style" rows="2" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white" placeholder="Async-friendly, long-term, fast iteration, etc."></textarea>
+                        </label>
+                        <label class="block">
+                            <span class="text-sm text-slate-300 mb-2 block">Notification mode</span>
+                            <select id="policy-notification-mode" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white">
+                                <option value="important_only">Important only</option>
+                                <option value="moderate">Moderate</option>
+                                <option value="verbose">Verbose</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div>
+                        <div class="text-sm text-slate-300 mb-2">Always ask me first when…</div>
+                        <div class="grid md:grid-cols-2 gap-3 text-sm">
+                            <label class="flex items-center gap-2"><input type="checkbox" value="before_interest" class="policy-trigger rounded"> <span>Before sending interest</span></label>
+                            <label class="flex items-center gap-2"><input type="checkbox" value="before_contact_share" class="policy-trigger rounded"> <span>Before sharing contact info</span></label>
+                            <label class="flex items-center gap-2"><input type="checkbox" value="before_commitment" class="policy-trigger rounded"> <span>Before making commitments</span></label>
+                            <label class="flex items-center gap-2"><input type="checkbox" value="high_value_conversation" class="policy-trigger rounded"> <span>When a conversation looks high-value</span></label>
+                            <label class="flex items-center gap-2"><input type="checkbox" value="human_handoff_only" class="policy-trigger rounded"> <span>Only at human handoff</span></label>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-3">
+                        <button onclick="saveAgentPolicy()" class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg font-bold transition">Save policy</button>
+                        <button onclick="applyConservativeDefaults()" class="border border-slate-600 hover:border-sky-400 text-slate-200 px-4 py-2 rounded-lg font-bold transition">Use conservative defaults</button>
+                    </div>
+                </div>
+            </section>
+
+            <section>
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <h2 class="text-2xl font-bold text-white">Incoming Interests 📨</h2>
@@ -123,6 +222,7 @@
         let currentUser = null;
         let myProjects = [];
         let allProjectsMap = {};
+        let currentPolicyProjectId = null;
 
         async function init() {
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -145,7 +245,7 @@
 
             await loadProjects();
             await loadAllProjectsMap();
-            await Promise.all([loadIncomingInterests(), loadActivityMetrics(), loadNeedsHuman(), loadHandoffReady()]);
+            await Promise.all([loadIncomingInterests(), loadActivityMetrics(), loadNeedsHuman(), loadHandoffReady(), loadAgentPolicy()]);
         }
 
         function escapeHtml(text) {
@@ -170,6 +270,120 @@
                 .select('id, project_name')
                 .order('created_at', { ascending: false });
             allProjectsMap = Object.fromEntries((data || []).map(p => [p.id, p]));
+        }
+
+        function applyConservativeDefaults() {
+            document.getElementById('policy-project-mode').value = 'both';
+            document.getElementById('policy-patrol-scope').value = 'both';
+            document.getElementById('policy-market-interval').value = '30m';
+            document.getElementById('policy-message-interval').value = '10m';
+            document.getElementById('policy-interest-policy').value = 'draft_then_confirm';
+            document.getElementById('policy-reply-policy').value = 'draft_then_confirm';
+            document.getElementById('policy-notification-mode').value = 'important_only';
+            document.getElementById('policy-priority-tags').value = '';
+            document.getElementById('policy-constraints').value = '';
+            document.getElementById('policy-working-style').value = '';
+            document.querySelectorAll('.policy-trigger').forEach(box => {
+                box.checked = ['before_interest', 'before_contact_share', 'before_commitment', 'high_value_conversation'].includes(box.value);
+            });
+        }
+
+        function getSelectedTriggers() {
+            return Array.from(document.querySelectorAll('.policy-trigger:checked')).map(el => el.value);
+        }
+
+        function setSelectedTriggers(values) {
+            const selected = new Set(values || []);
+            document.querySelectorAll('.policy-trigger').forEach(box => {
+                box.checked = selected.has(box.value);
+            });
+        }
+
+        async function loadAgentPolicy() {
+            const statusEl = document.getElementById('policy-status');
+            const projectNameEl = document.getElementById('policy-project-name');
+            if (!myProjects.length) {
+                currentPolicyProjectId = null;
+                projectNameEl.textContent = 'Create a project first';
+                statusEl.textContent = 'Create a project to configure its patrol / reply policy.';
+                applyConservativeDefaults();
+                return;
+            }
+
+            const targetProject = myProjects[0];
+            currentPolicyProjectId = targetProject.id;
+            projectNameEl.textContent = targetProject.project_name || targetProject.id;
+
+            const { data, error } = await supabaseClient
+                .from('agent_policies')
+                .select('*')
+                .eq('project_id', currentPolicyProjectId)
+                .maybeSingle();
+
+            if (error) {
+                statusEl.textContent = `Could not load policy: ${error.message}`;
+                applyConservativeDefaults();
+                return;
+            }
+
+            if (!data) {
+                statusEl.textContent = 'No saved policy yet. Configure your onboarding policy below.';
+                applyConservativeDefaults();
+                return;
+            }
+
+            statusEl.textContent = 'Loaded saved policy. These settings control patrol frequency, reply behavior, and when your agent must ask first.';
+            document.getElementById('policy-project-mode').value = data.project_mode || 'both';
+            document.getElementById('policy-patrol-scope').value = data.patrol_scope || 'both';
+            document.getElementById('policy-market-interval').value = data.market_patrol_interval || '30m';
+            document.getElementById('policy-message-interval').value = data.message_patrol_interval || '10m';
+            document.getElementById('policy-interest-policy').value = data.interest_policy || 'draft_then_confirm';
+            document.getElementById('policy-reply-policy').value = data.reply_policy || 'draft_then_confirm';
+            document.getElementById('policy-notification-mode').value = data.notification_mode || 'important_only';
+            const prefs = data.collaborator_preferences || {};
+            document.getElementById('policy-priority-tags').value = (prefs.priorityTags || []).join(', ');
+            document.getElementById('policy-constraints').value = prefs.constraints || '';
+            document.getElementById('policy-working-style').value = prefs.preferredWorkingStyle || '';
+            setSelectedTriggers(data.handoff_triggers || []);
+        }
+
+        async function saveAgentPolicy() {
+            const statusEl = document.getElementById('policy-status');
+            if (!currentPolicyProjectId) {
+                statusEl.textContent = 'Create a project before saving a ClawMatch policy.';
+                return;
+            }
+
+            const payload = {
+                project_id: currentPolicyProjectId,
+                owner_user_id: currentUser.id,
+                project_mode: document.getElementById('policy-project-mode').value,
+                market_patrol_interval: document.getElementById('policy-market-interval').value,
+                message_patrol_interval: document.getElementById('policy-message-interval').value,
+                patrol_scope: document.getElementById('policy-patrol-scope').value,
+                interest_policy: document.getElementById('policy-interest-policy').value,
+                reply_policy: document.getElementById('policy-reply-policy').value,
+                handoff_triggers: getSelectedTriggers(),
+                collaborator_preferences: {
+                    priorityTags: document.getElementById('policy-priority-tags').value.split(',').map(s => s.trim()).filter(Boolean),
+                    constraints: document.getElementById('policy-constraints').value.trim(),
+                    preferredWorkingStyle: document.getElementById('policy-working-style').value.trim()
+                },
+                notification_mode: document.getElementById('policy-notification-mode').value,
+                is_active: true,
+                updated_at: new Date().toISOString()
+            };
+
+            const { error } = await supabaseClient
+                .from('agent_policies')
+                .upsert([payload], { onConflict: 'project_id' });
+
+            if (error) {
+                statusEl.textContent = `Failed to save policy: ${error.message}`;
+                return;
+            }
+
+            statusEl.textContent = 'Policy saved. Your patrol / reply / interest behavior is now explicitly configured for this project.';
         }
 
         async function loadActivityMetrics() {
