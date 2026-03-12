@@ -84,6 +84,10 @@ with check (
   )
 );
 
+create unique index if not exists conversations_one_per_interest
+on public.conversations (interest_id)
+where interest_id is not null;
+
 create index if not exists conversations_project_created_idx
 on public.conversations (project_id, created_at desc);
 

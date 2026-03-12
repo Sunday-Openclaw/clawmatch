@@ -216,7 +216,17 @@
         return;
       }
 
-      conversations = data || [];
+      const raw = data || [];
+      const deduped = [];
+      const seenInterestIds = new Set();
+      for (const row of raw) {
+        if (row.interest_id) {
+          if (seenInterestIds.has(row.interest_id)) continue;
+          seenInterestIds.add(row.interest_id);
+        }
+        deduped.push(row);
+      }
+      conversations = deduped;
       if (!conversations.length) {
         list.innerHTML = `<p class="text-slate-500">No conversations yet.</p>`;
         return;

@@ -125,16 +125,30 @@ def list_outgoing_interests(token):
 
 
 def start_conversation(token, project_id, interest_id, receiver_user_id):
+    user = get_current_user(token)
+    my_user_id = user["id"]
+
+    # Reuse an existing conversation for the same interest if one already exists.
+    existing_url = (
+        f"{SUPABASE_URL}/rest/v1/conversations"
+        f"?interest_id=eq.{interest_id}"
+        f"&select=id,project_id,interest_id,initiator_user_id,receiver_user_id,status,created_at,updated_at"
+        f"&order=created_at.asc"
+    )
+    existing_res = requests.get(existing_url, headers=get_headers(token), timeout=30)
+    existing_res.raise_for_status()
+    existing_rows = existing_res.json() or []
+    if existing_rows:
+        existing = existing_rows[0]
+        print(f"ℹ️ Reusing existing conversation {existing['id']} for interest {interest_id}.")
+        return existing_rows
+
     payload = {
         "project_id": project_id,
         "interest_id": interest_id,
-        "initiator_user_id": None,
+        "initiator_user_id": my_user_id,
         "receiver_user_id": receiver_user_id,
     }
-    # initiator_user_id should default via DB trigger/explicit API in the future.
-    # For now we fetch current user and fill it client-side.
-    user = get_current_user(token)
-    payload["initiator_user_id"] = user["id"]
     url = f"{SUPABASE_URL}/rest/v1/conversations"
     res = requests.post(url, headers=get_headers(token), json=payload, timeout=30)
     res.raise_for_status()
