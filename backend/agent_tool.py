@@ -5,7 +5,6 @@ import json
 
 SUPABASE_URL = "https://xjljjxogsxumcnjyetwy.supabase.co"
 ANON_KEY = "sb_publishable_dlgv32Zav_IaU_l6LVYu0A_CIz-Ww_u"
-AGENT_API_BASE = "http://127.0.0.1:8790/api/agent"
 
 
 def get_headers(token):
@@ -62,7 +61,7 @@ def fetch_project(token, project_id):
 
 def list_market(token=None, limit=20, agent_key=None):
     if agent_key:
-        return post_agent_api(agent_key, "list-market", {"limit": limit})
+        return post_agent_api(agent_key, "list_market", {"limit": limit})
     url = f"{SUPABASE_URL}/rest/v1/projects?select=id,user_id,project_name,public_summary,tags,agent_contact,created_at&public_summary=not.is.null&order=created_at.desc&limit={int(limit)}"
     res = requests.get(url, headers=get_headers(token), timeout=30)
     res.raise_for_status()
@@ -94,12 +93,12 @@ def evaluate_project(token, project_id, score, confidence, reason, should_connec
 
 def submit_interest(token, project_id, message, contact=None, agent_key=None):
     if agent_key:
-        data = post_agent_api(agent_key, "submit-interest", {
+        data = post_agent_api(agent_key, "submit_interest", {
             "project_id": project_id,
             "message": message,
             "contact": contact,
         })
-        print(f"✅ Success! Submitted interest for Project {project_id} via agent API.")
+        print(f"✅ Success! Submitted interest for Project {project_id} via agent gateway.")
         return data
     payload = {
         "target_project_id": project_id,
@@ -167,26 +166,34 @@ def start_conversation(token, project_id, interest_id, receiver_user_id):
     return res.json()
 
 
-def post_agent_api(agent_key, path, payload=None):
-    url = f"{AGENT_API_BASE}/{path.lstrip('/')}"
+def post_agent_api(agent_key, action, payload=None):
+    url = f"{SUPABASE_URL}/rest/v1/rpc/agent_gateway"
     headers = {
-        "Authorization": f"Bearer {agent_key}",
+        "apikey": ANON_KEY,
+        "Authorization": f"Bearer {ANON_KEY}",
         "Content-Type": "application/json",
     }
-    res = requests.post(url, headers=headers, json=payload or {}, timeout=30)
+    rpc_payload = {
+        "p_agent_key": agent_key,
+        "p_action": action,
+        "p_payload": payload or {}
+    }
+    res = requests.post(url, headers=headers, json=rpc_payload, timeout=30)
     res.raise_for_status()
     data = res.json()
+    if isinstance(data, dict) and data.get("error"):
+        raise ValueError(f"RPC Error: {data['error']} - {data.get('message', '')}")
     return data.get("data", data)
 
 
 def send_message(token, conversation_id, message, agent_name=None, agent_key=None):
     if agent_key:
-        data = post_agent_api(agent_key, "send-message", {
+        data = post_agent_api(agent_key, "send_message", {
             "conversation_id": conversation_id,
             "message": message,
             "agent_name": agent_name,
         })
-        print(f"✅ Success! Sent message to Conversation {conversation_id} via agent API.")
+        print(f"✅ Success! Sent message to Conversation {conversation_id} via agent gateway.")
         return data
 
     user = get_current_user(token)
@@ -205,7 +212,7 @@ def send_message(token, conversation_id, message, agent_name=None, agent_key=Non
 
 def list_conversations(token=None, agent_key=None):
     if agent_key:
-        return post_agent_api(agent_key, "list-conversations")
+        return post_agent_api(agent_key, "list_conversations")
 
     url = (
         f"{SUPABASE_URL}/rest/v1/conversations"
@@ -238,7 +245,7 @@ def update_conversation_state(token, conversation_id, status=None, summary_for_o
 
 def list_messages(token=None, conversation_id=None, agent_key=None):
     if agent_key:
-        return post_agent_api(agent_key, "list-messages", {"conversation_id": conversation_id})
+        return post_agent_api(agent_key, "list_messages", {"conversation_id": conversation_id})
 
     url = (
         f"{SUPABASE_URL}/rest/v1/conversation_messages"
