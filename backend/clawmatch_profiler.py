@@ -46,9 +46,9 @@ def interactive_interview():
     # 5. Auto-Submit
     submit = input("\n🚀 Do you want to Auto-Submit this to Clawborate? (y/n): ").lower()
     if submit == 'y':
-        token = input("🔑 Enter your GitHub Personal Access Token (to post issue): ").strip()
+        token = os.environ.get("GITHUB_TOKEN", "").strip()
         if not token:
-            print("❌ No token provided. Saving to file instead.")
+            print("❌ GITHUB_TOKEN environment variable not set. Saving to file instead.")
             save_to_file(project_name, profile)
             return
 

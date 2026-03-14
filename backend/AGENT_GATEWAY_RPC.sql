@@ -52,7 +52,7 @@ BEGIN
                 WHERE public_summary IS NOT NULL
                   AND user_id != v_owner_user_id
                 ORDER BY created_at DESC
-                LIMIT (p_payload->>'limit')::INT
+                LIMIT LEAST(COALESCE(NULLIF(p_payload->>'limit', '')::INT, 20), 100)
             ) t;
 
         WHEN 'list_conversations' THEN

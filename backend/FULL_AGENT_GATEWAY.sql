@@ -29,21 +29,33 @@ BEGIN
 
     CASE p_action
         WHEN 'get_policy' THEN
+            IF NOT ('policy' = ANY(v_agent_row.scopes)) THEN
+                RETURN jsonb_build_object('error', 'missing_scope', 'message', 'Scope "policy" required');
+            END IF;
+
             SELECT row_to_json(p.*)::jsonb INTO v_result
             FROM public.agent_policies p
             WHERE p.owner_user_id = v_owner_user_id
             LIMIT 1;
 
         WHEN 'list_market' THEN
+            IF NOT ('market' = ANY(v_agent_row.scopes)) THEN
+                RETURN jsonb_build_object('error', 'missing_scope', 'message', 'Scope "market" required');
+            END IF;
+
             SELECT jsonb_agg(t) INTO v_result FROM (
                 SELECT id, user_id, project_name, public_summary, tags, agent_contact, created_at
                 FROM public.projects
                 WHERE public_summary IS NOT NULL AND user_id != v_owner_user_id
                 ORDER BY created_at DESC
-                LIMIT COALESCE((p_payload->>'limit')::INT, 20)
+                LIMIT LEAST(COALESCE(NULLIF(p_payload->>'limit', '')::INT, 20), 100)
             ) t;
 
         WHEN 'list_conversations' THEN
+            IF NOT ('conversations' = ANY(v_agent_row.scopes)) THEN
+                RETURN jsonb_build_object('error', 'missing_scope', 'message', 'Scope "conversations" required');
+            END IF;
+
             SELECT jsonb_agg(t) INTO v_result FROM (
                 SELECT c.*, p.project_name
                 FROM public.conversations c
@@ -53,6 +65,18 @@ BEGIN
             ) t;
 
         WHEN 'list_messages' THEN
+            IF NOT ('messages' = ANY(v_agent_row.scopes)) THEN
+                RETURN jsonb_build_object('error', 'missing_scope', 'message', 'Scope "messages" required');
+            END IF;
+
+            IF NOT EXISTS (
+                SELECT 1 FROM public.conversations
+                WHERE id = (p_payload->>'conversation_id')::UUID
+                  AND (initiator_user_id = v_owner_user_id OR receiver_user_id = v_owner_user_id)
+            ) THEN
+                RETURN jsonb_build_object('error', 'forbidden', 'message', 'Access to conversation denied');
+            END IF;
+
             SELECT jsonb_agg(t) INTO v_result FROM (
                 SELECT id, conversation_id, sender_user_id, sender_agent_name, message, created_at
                 FROM public.conversation_messages
@@ -61,6 +85,18 @@ BEGIN
             ) t;
 
         WHEN 'send_message' THEN
+            IF NOT ('messages' = ANY(v_agent_row.scopes)) THEN
+                RETURN jsonb_build_object('error', 'missing_scope', 'message', 'Scope "messages" required');
+            END IF;
+
+            IF NOT EXISTS (
+                SELECT 1 FROM public.conversations
+                WHERE id = (p_payload->>'conversation_id')::UUID
+                  AND (initiator_user_id = v_owner_user_id OR receiver_user_id = v_owner_user_id)
+            ) THEN
+                RETURN jsonb_build_object('error', 'forbidden', 'message', 'Access to conversation denied');
+            END IF;
+
             INSERT INTO public.conversation_messages (conversation_id, sender_user_id, sender_agent_name, message)
             VALUES ((p_payload->>'conversation_id')::UUID, v_owner_user_id, p_payload->>'agent_name', p_payload->>'message')
             RETURNING row_to_json(conversation_messages.*)::jsonb INTO v_result;

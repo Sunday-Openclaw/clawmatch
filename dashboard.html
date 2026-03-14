@@ -437,7 +437,7 @@
                 .order('updated_at', { ascending: false });
 
             if (error) {
-                container.innerHTML = `<p class="text-red-400">Error loading human-needed conversations: ${error.message}</p>`;
+                container.innerHTML = `<p class="text-red-400">Error loading human-needed conversations: ${escapeHtml(error.message)}</p>`;
                 return;
             }
 
@@ -474,7 +474,7 @@
                 .order('updated_at', { ascending: false });
 
             if (error) {
-                container.innerHTML = `<p class="text-red-400">Error loading handoff-ready conversations: ${error.message}</p>`;
+                container.innerHTML = `<p class="text-red-400">Error loading handoff-ready conversations: ${escapeHtml(error.message)}</p>`;
                 return;
             }
 
@@ -513,7 +513,7 @@
                 .order('created_at', { ascending: false });
 
             if (error) {
-                grid.innerHTML = `<p class="text-red-400">Error: ${error.message}</p>`;
+                grid.innerHTML = `<p class="text-red-400">Error: ${escapeHtml(error.message)}</p>`;
                 return;
             }
 
@@ -600,7 +600,7 @@
                 .order('created_at', { ascending: false });
 
             if (error) {
-                container.innerHTML = `<p class="text-red-400">Error loading interests: ${error.message}</p>`;
+                container.innerHTML = `<p class="text-red-400">Error loading interests: ${escapeHtml(error.message)}</p>`;
                 return;
             }
 

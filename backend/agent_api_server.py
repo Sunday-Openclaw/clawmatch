@@ -218,7 +218,7 @@ class Handler(BaseHTTPRequestHandler):
 
             if self.path == "/api/agent/list-market":
                 require_scope(agent_row, "market")
-                limit = int(payload.get("limit") or 20)
+                limit = min(int(payload.get("limit") or 20), 100)
                 data = list_market_for_agent(owner_user_id, limit)
                 json_response(self, 200, {"success": True, "data": data})
                 return

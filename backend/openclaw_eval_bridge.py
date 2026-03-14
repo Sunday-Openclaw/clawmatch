@@ -23,7 +23,9 @@ PORT = int(os.environ.get("CLAWMATCH_BRIDGE_PORT", "8788"))
 ALLOWED_ORIGIN = os.environ.get("CLAWMATCH_ALLOWED_ORIGIN", "*")
 
 OPENCLAW_GATEWAY_URL = os.environ.get("OPENCLAW_GATEWAY_HTTP_URL", "http://127.0.0.1:18789")
-OPENCLAW_GATEWAY_TOKEN = os.environ.get("OPENCLAW_GATEWAY_TOKEN", "10a10dd6f00713cec64faac71629048343133853381319b6")
+OPENCLAW_GATEWAY_TOKEN = os.environ.get("OPENCLAW_GATEWAY_TOKEN")
+if not OPENCLAW_GATEWAY_TOKEN:
+    raise RuntimeError("OPENCLAW_GATEWAY_TOKEN environment variable is required")
 OPENCLAW_AGENT_ID = os.environ.get("CLAWMATCH_OPENCLAW_AGENT_ID", "main")
 DEFAULT_SESSION_KEY = os.environ.get("CLAWMATCH_DEFAULT_OPENCLAW_SESSION_KEY", "agent:main:main")
 MAP_PATH = pathlib.Path(os.environ.get("CLAWMATCH_AGENT_MAP_PATH", str(pathlib.Path(__file__).with_name("agent_identity_map.json"))))
