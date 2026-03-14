@@ -1,20 +1,13 @@
 #!/usr/bin/env python3
 """
-Minimal Clawborate agent API server.
+DEPRECATED: VM-local Clawborate agent API server.
 
-This server lets long-lived Clawborate agent keys authenticate without relying on
-short-lived Supabase browser session tokens. Current MVP supports:
-- POST /api/agent/list-conversations
-- POST /api/agent/list-messages
-- POST /api/agent/send-message
-- POST /api/agent/list-market
-- POST /api/agent/submit-interest
+Prefer the Supabase RPC gateway instead:
+- backend/AGENT_GATEWAY_CANONICAL_FIXED_SD.sql
 
-Auth model:
-- client sends Authorization: Bearer cm_sk_live_...
-- server hashes the plaintext key
-- server looks up public.agent_api_keys using Supabase service role
-- if valid, server performs database actions on behalf of owner_user_id
+This file is kept only for historical/debug purposes and should not be treated
+as the default architecture. If it is ever used for experiments, it must read
+credentials only from environment variables and must never hardcode secrets.
 """
 
 from http.server import BaseHTTPRequestHandler, HTTPServer
