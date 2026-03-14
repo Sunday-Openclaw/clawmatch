@@ -3,9 +3,13 @@ import argparse
 import requests
 import json
 
-SUPABASE_URL = "https://xjljjxogsxumcnjyetwy.supabase.co"
-ANON_KEY = "sb_publishable_dlgv32Zav_IaU_l6LVYu0A_CIz-Ww_u"
-RPC_URL = f"{SUPABASE_URL}/rest/v1/rpc/agent_gateway"
+from supabase_client import (
+    SUPABASE_URL, SUPABASE_ANON_KEY as ANON_KEY, RPC_URL,
+    anon_headers, rpc_headers, validate_uuid as _validate_uuid,
+    require_config, get_current_user,
+)
+
+require_config()
 
 
 RPC_ACTION_ALIASES = {
@@ -26,20 +30,11 @@ RPC_ACTION_ALIASES = {
 
 
 def get_headers(token):
-    return {
-        "apikey": ANON_KEY,
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-        "Prefer": "return=representation",
-    }
+    return anon_headers(token)
 
 
 def post_agent_api(agent_key, action, payload=None):
-    headers = {
-        "apikey": ANON_KEY,
-        "Authorization": f"Bearer {ANON_KEY}",
-        "Content-Type": "application/json",
-    }
+    headers = rpc_headers()
     attempted = []
     last_error = None
     for candidate in RPC_ACTION_ALIASES.get(action, [action]):
@@ -78,6 +73,7 @@ def update_project(token, project_id, summary, constraints, tags, contact, agent
             payload["agent_contact"] = contact
         return post_agent_api(agent_key, "update_project", payload)
 
+    _validate_uuid(project_id, "project_id")
     url = f"{SUPABASE_URL}/rest/v1/projects?id=eq.{project_id}"
     payload = {
         "public_summary": summary,
@@ -116,6 +112,7 @@ def create_project(token, name, summary, constraints, tags, contact, agent_key=N
 def fetch_project(token, project_id, agent_key=None):
     if agent_key:
         return post_agent_api(agent_key, "get_project", {"project_id": project_id})
+    _validate_uuid(project_id, "project_id")
     url = f"{SUPABASE_URL}/rest/v1/projects?id=eq.{project_id}&select=id,user_id,project_name,public_summary,tags,agent_contact,private_constraints,created_at"
     res = requests.get(url, headers=get_headers(token), timeout=30)
     res.raise_for_status()
@@ -220,6 +217,8 @@ def start_conversation(token=None, project_id=None, interest_id=None, receiver_u
     user = get_current_user(token)
     my_user_id = user["id"]
 
+    if interest_id:
+        _validate_uuid(interest_id, "interest_id")
     existing_url = (
         f"{SUPABASE_URL}/rest/v1/conversations"
         f"?interest_id=eq.{interest_id}"
@@ -301,6 +300,7 @@ def update_conversation(token=None, conversation_id=None, status=None, summary_f
         payload["conversation_id"] = conversation_id
         return post_agent_api(agent_key, "update_conversation", payload)
 
+    _validate_uuid(conversation_id, "conversation_id")
     payload["updated_at"] = "now()"
     url = f"{SUPABASE_URL}/rest/v1/conversations?id=eq.{conversation_id}"
     headers = get_headers(token).copy()
@@ -315,20 +315,12 @@ def list_messages(token=None, conversation_id=None, agent_key=None):
     if agent_key:
         return post_agent_api(agent_key, "list_messages", {"conversation_id": conversation_id})
 
+    _validate_uuid(conversation_id, "conversation_id")
     url = (
         f"{SUPABASE_URL}/rest/v1/conversation_messages"
         f"?conversation_id=eq.{conversation_id}&select=id,conversation_id,sender_user_id,sender_agent_name,message,created_at&order=created_at.asc"
     )
     res = requests.get(url, headers=get_headers(token), timeout=30)
-    res.raise_for_status()
-    return res.json()
-
-
-def get_current_user(token):
-    url = f"{SUPABASE_URL}/auth/v1/user"
-    headers = get_headers(token).copy()
-    headers["Accept"] = "application/json"
-    res = requests.get(url, headers=headers, timeout=30)
     res.raise_for_status()
     return res.json()
 
@@ -373,6 +365,25 @@ def main():
     parser.add_argument("--last-agent-decision", help="Latest internal/public decision label")
 
     args = parser.parse_args()
+
+    # Input range validation
+    if args.limit is not None and (args.limit < 1 or args.limit > 200):
+        raise ValueError("--limit must be between 1 and 200")
+    if args.score is not None and (args.score < 0 or args.score > 100):
+        raise ValueError("--score must be between 0 and 100")
+    if args.confidence is not None and (args.confidence < 0.0 or args.confidence > 1.0):
+        raise ValueError("--confidence must be between 0.0 and 1.0")
+
+    # UUID validation for ID arguments
+    uuid_args = {
+        "--id": args.id,
+        "--interest-id": args.interest_id,
+        "--receiver-user-id": args.receiver_user_id,
+        "--conversation-id": args.conversation_id,
+    }
+    for arg_name, arg_value in uuid_args.items():
+        if arg_value is not None:
+            _validate_uuid(arg_value, arg_name)
 
     agent_key_actions = {
         "list-conversations", "list-messages", "send-message", "list-market",

@@ -14,9 +14,9 @@ def run_matcher():
             profile = json.loads(json_str)
         else:
             profile = json.loads(issue_body)
-    except:
+    except (json.JSONDecodeError, ValueError, IndexError) as e:
         with open('match_result.txt', 'w') as f:
-            f.write("❌ **Error:** Invalid JSON format. Please use the `clawborate_profiler.py` script.")
+            f.write(f"❌ **Error:** Invalid JSON format: {e}. Please use the `clawborate_profiler.py` script.")
         return
 
     # 2. Extract Layers

@@ -20,8 +20,12 @@ from pathlib import Path
 
 import requests
 
-SUPABASE_URL = "https://xjljjxogsxumcnjyetwy.supabase.co"
-ANON_KEY = "sb_publishable_dlgv32Zav_IaU_l6LVYu0A_CIz-Ww_u"
+from supabase_client import (
+    SUPABASE_URL, SUPABASE_ANON_KEY as ANON_KEY,
+    anon_headers, require_config, get_current_user,
+)
+
+require_config()
 
 
 DEFAULT_POLICY = {
@@ -103,18 +107,7 @@ DEFAULT_POLICY = {
 
 
 def headers(token: str):
-    return {
-        "apikey": ANON_KEY,
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-    }
-
-
-
-def get_current_user(token: str):
-    r = requests.get(f"{SUPABASE_URL}/auth/v1/user", headers=headers(token), timeout=30)
-    r.raise_for_status()
-    return r.json()
+    return anon_headers(token)
 
 
 

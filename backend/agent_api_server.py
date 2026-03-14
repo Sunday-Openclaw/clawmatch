@@ -17,15 +17,19 @@ import os
 from typing import Any, Dict, Optional
 import requests
 
+from supabase_client import (
+    SUPABASE_URL, require_config,
+    service_headers as _service_headers,
+    SupabaseApiError,
+)
+
+require_config()
+
 HOST = os.environ.get("CLAWMATCH_AGENT_API_HOST", "127.0.0.1")
 PORT = int(os.environ.get("CLAWMATCH_AGENT_API_PORT", "8790"))
 ALLOWED_ORIGIN = os.environ.get("CLAWMATCH_ALLOWED_ORIGIN", "*")
 
-SUPABASE_URL = os.environ.get("CLAWMATCH_SUPABASE_URL", "https://xjljjxogsxumcnjyetwy.supabase.co")
-SUPABASE_ANON_KEY = os.environ.get("CLAWMATCH_SUPABASE_ANON_KEY", "sb_publishable_dlgv32Zav_IaU_l6LVYu0A_CIz-Ww_u")
-SUPABASE_SERVICE_ROLE_KEY = os.environ.get("CLAWMATCH_SUPABASE_SERVICE_ROLE_KEY", "")
-
-# Deprecated: prefer Supabase RPC gateway (`backend/AGENT_GATEWAY_CANONICAL_FIXED_SD.sql`)
+# Deprecated: prefer Supabase RPC gateway (`backend/sql/gateway/AGENT_GATEWAY_CANONICAL_FIXED_SD.sql`)
 # over running this VM-local API server. This file must never hardcode a service-role key.
 
 
@@ -49,19 +53,11 @@ def json_response(handler: BaseHTTPRequestHandler, status: int, payload: Dict[st
     handler.wfile.write(body)
 
 
-def require_service_role() -> None:
-    if not SUPABASE_SERVICE_ROLE_KEY:
-        raise ApiError(500, "server_misconfigured", "Missing CLAWMATCH_SUPABASE_SERVICE_ROLE_KEY")
-
-
 def service_headers() -> Dict[str, str]:
-    require_service_role()
-    return {
-        "apikey": SUPABASE_SERVICE_ROLE_KEY,
-        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
-        "Content-Type": "application/json",
-        "Prefer": "return=representation",
-    }
+    try:
+        return _service_headers()
+    except RuntimeError as e:
+        raise ApiError(500, "server_misconfigured", str(e))
 
 
 def hash_agent_key(plaintext: str) -> str:
@@ -84,7 +80,10 @@ def authenticate_agent_key(plaintext_key: str) -> Dict[str, Any]:
     )
     res = requests.get(url, headers=service_headers(), timeout=30)
     res.raise_for_status()
-    rows = res.json() or []
+    data = res.json()
+    if not isinstance(data, list):
+        raise ApiError(502, "unexpected_upstream_response", f"Expected list from Supabase, got {type(data).__name__}")
+    rows = data or []
     if not rows:
         raise ApiError(401, "invalid_agent_key", "Invalid or revoked agent key")
     row = rows[0]
@@ -120,9 +119,24 @@ def load_conversations_for_owner(owner_user_id: str) -> Any:
     return res.json()
 
 
+def check_conversation_access(owner_user_id: str, conversation_id: str) -> bool:
+    url = (
+        f"{SUPABASE_URL}/rest/v1/conversations"
+        f"?id=eq.{conversation_id}"
+        f"&or=(initiator_user_id.eq.{owner_user_id},receiver_user_id.eq.{owner_user_id})"
+        f"&select=id"
+        f"&limit=1"
+    )
+    res = requests.get(url, headers=service_headers(), timeout=30)
+    res.raise_for_status()
+    data = res.json()
+    if not isinstance(data, list):
+        raise ApiError(502, "unexpected_upstream_response", f"Expected list from Supabase, got {type(data).__name__}")
+    return len(data) > 0
+
+
 def load_messages_for_conversation(owner_user_id: str, conversation_id: str) -> Any:
-    convs = load_conversations_for_owner(owner_user_id)
-    if not any(row.get("id") == conversation_id for row in convs):
+    if not check_conversation_access(owner_user_id, conversation_id):
         raise ApiError(403, "forbidden_conversation", "Conversation is not accessible for this agent key")
     url = (
         f"{SUPABASE_URL}/rest/v1/conversation_messages"
@@ -134,8 +148,7 @@ def load_messages_for_conversation(owner_user_id: str, conversation_id: str) -> 
 
 
 def send_message(owner_user_id: str, conversation_id: str, message: str, agent_name: Optional[str]) -> Any:
-    convs = load_conversations_for_owner(owner_user_id)
-    if not any(row.get("id") == conversation_id for row in convs):
+    if not check_conversation_access(owner_user_id, conversation_id):
         raise ApiError(403, "forbidden_conversation", "Conversation is not accessible for this agent key")
     payload = {
         "conversation_id": conversation_id,
@@ -234,8 +247,14 @@ class Handler(BaseHTTPRequestHandler):
 
         except ApiError as e:
             json_response(self, e.status, {"error": e.code, "message": e.message})
+        except requests.ConnectionError as e:
+            json_response(self, 502, {"error": "upstream_connection_error", "message": str(e)})
+        except requests.Timeout as e:
+            json_response(self, 504, {"error": "upstream_timeout", "message": str(e)})
         except requests.HTTPError as e:
             json_response(self, 502, {"error": "upstream_http_error", "message": str(e)})
+        except json.JSONDecodeError as e:
+            json_response(self, 502, {"error": "upstream_json_error", "message": str(e)})
         except Exception as e:
             json_response(self, 500, {"error": "server_error", "message": str(e)})
 

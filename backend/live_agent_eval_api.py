@@ -26,8 +26,12 @@ import urllib.request
 import urllib.error
 from typing import Any, Dict
 
-SUPABASE_URL = os.environ.get("CLAWMATCH_SUPABASE_URL", "https://xjljjxogsxumcnjyetwy.supabase.co")
-SUPABASE_ANON_KEY = os.environ.get("CLAWMATCH_SUPABASE_ANON_KEY", "sb_publishable_dlgv32Zav_IaU_l6LVYu0A_CIz-Ww_u")
+from supabase_client import (
+    SUPABASE_URL, SUPABASE_ANON_KEY,
+    require_config,
+)
+
+require_config()
 HOST = os.environ.get("CLAWMATCH_EVAL_HOST", "127.0.0.1")
 PORT = int(os.environ.get("CLAWMATCH_EVAL_PORT", "8787"))
 ALLOWED_ORIGIN = os.environ.get("CLAWMATCH_ALLOWED_ORIGIN", "*")
@@ -146,8 +150,8 @@ class Handler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", "0"))
             raw = self.rfile.read(length)
             payload = json.loads(raw.decode("utf-8"))
-        except Exception:
-            json_response(self, 400, {"error": "invalid_json"})
+        except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as e:
+            json_response(self, 400, {"error": "invalid_json", "message": str(e)})
             return
 
         project_id = (payload.get("projectId") or "").strip()

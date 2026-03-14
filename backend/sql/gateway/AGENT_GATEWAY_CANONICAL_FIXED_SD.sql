@@ -12,6 +12,7 @@ create or replace function public.agent_gateway(
 returns jsonb
 language plpgsql
 security definer
+set search_path = public
 as $$
 declare
     v_key_hash text;
@@ -45,11 +46,18 @@ begin
     set last_used_at = now()
     where id = v_key_id;
 
-    v_limit := greatest(1, least(coalesce(nullif(p_payload->>'limit', '')::int, 20), 100));
-    v_project_id := nullif(p_payload->>'project_id', '')::uuid;
-    v_conversation_id := nullif(p_payload->>'conversation_id', '')::uuid;
-    v_interest_id := nullif(p_payload->>'interest_id', '')::uuid;
-    v_receiver_user_id := nullif(p_payload->>'receiver_user_id', '')::uuid;
+    v_limit := greatest(1, least(coalesce(
+        case when (p_payload->>'limit') ~ '^\d+$'
+             then (p_payload->>'limit')::int
+             else null end, 20), 100));
+    v_project_id := case when nullif(p_payload->>'project_id', '') ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+                         then (p_payload->>'project_id')::uuid else null end;
+    v_conversation_id := case when nullif(p_payload->>'conversation_id', '') ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+                              then (p_payload->>'conversation_id')::uuid else null end;
+    v_interest_id := case when nullif(p_payload->>'interest_id', '') ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+                          then (p_payload->>'interest_id')::uuid else null end;
+    v_receiver_user_id := case when nullif(p_payload->>'receiver_user_id', '') ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+                               then (p_payload->>'receiver_user_id')::uuid else null end;
 
     case p_action
         when 'get_policy' then
@@ -431,6 +439,7 @@ begin
 end;
 $$;
 
+alter function public.agent_gateway(text, text, jsonb) owner to postgres;
 grant execute on function public.agent_gateway(text, text, jsonb) to anon, authenticated, service_role;
 
 notify pgrst, 'reload schema';

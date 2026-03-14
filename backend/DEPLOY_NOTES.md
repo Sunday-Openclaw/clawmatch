@@ -3,7 +3,7 @@
 ## Recommended gateway SQL
 Use this file for the current working Supabase RPC gateway:
 
-- `backend/AGENT_GATEWAY_CANONICAL_FIXED_SD.sql`
+- `backend/sql/gateway/AGENT_GATEWAY_CANONICAL_FIXED_SD.sql`
 
 This is the version that was verified live to:
 - expose correctly via `/rest/v1/rpc/agent_gateway`
@@ -12,14 +12,25 @@ This is the version that was verified live to:
 - avoid the earlier RPC 404 problem by using explicit typed key lookup instead of `record + select * into record`
 - support project create/update/delete through the gateway
 
-## Important
-Do **not** treat these as the primary deploy target:
-- `backend/archive/AGENT_GATEWAY_CANONICAL.sql`
-- `backend/archive/AGENT_GATEWAY_CANONICAL_LITE.sql`
-- `backend/archive/AGENT_GATEWAY_CANONICAL_FIXED.sql` (fixes RPC exposure but not RLS)
-- `backend/archive/AGENT_GATEWAY_STAGE1.sql` ... `backend/archive/AGENT_GATEWAY_STAGE5.sql`
+## SQL directory structure
+```
+backend/sql/
+  schemas/         - Table definitions (deploy these first)
+  gateway/         - Canonical RPC gateway (deploy after schemas)
+  migrations/      - Schema upgrade scripts (for existing databases)
+  archive/         - Historical debug/iteration files (NOT for production)
+```
 
-They are useful as debugging history, not as the canonical production deploy path.
+## Backend script configuration
+`backend/agent_tool.py` and related backend scripts now expect environment variables rather than hardcoded Supabase config:
+- `CLAWMATCH_SUPABASE_URL`
+- `CLAWMATCH_SUPABASE_ANON_KEY`
+
+See `.env.example` for the current expected config surface.
+
+## Important
+Debug/iteration SQL files have been moved to `backend/sql/archive/`.
+They are useful as debugging history, not as deploy targets.
 
 ## VM-local server
 `backend/agent_api_server.py` is deprecated in architecture terms.

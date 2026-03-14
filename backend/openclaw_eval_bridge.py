@@ -16,7 +16,10 @@ import json
 import os
 import pathlib
 import urllib.request
+import urllib.error
 from typing import Any, Dict
+
+from evaluation_interface import EvaluationResult
 
 HOST = os.environ.get("CLAWMATCH_BRIDGE_HOST", "127.0.0.1")
 PORT = int(os.environ.get("CLAWMATCH_BRIDGE_PORT", "8788"))
@@ -47,7 +50,9 @@ def load_identity_map() -> Dict[str, Any]:
     if MAP_PATH.exists():
         try:
             return json.loads(MAP_PATH.read_text())
-        except Exception:
+        except (json.JSONDecodeError, OSError) as e:
+            import logging
+            logging.warning("Failed to load identity map from %s: %s", MAP_PATH, e)
             return {}
     return {}
 
@@ -146,7 +151,7 @@ def extract_text(chat_response: Dict[str, Any]) -> str:
     raise ValueError("OpenClaw response content was not text")
 
 
-def parse_agent_json(text: str) -> Dict[str, Any]:
+def parse_agent_json(text: str) -> EvaluationResult:
     cleaned = text.strip()
     if cleaned.startswith("```"):
         cleaned = cleaned.strip("`")
@@ -156,7 +161,9 @@ def parse_agent_json(text: str) -> Dict[str, Any]:
     end = cleaned.rfind("}")
     if start == -1 or end == -1 or end < start:
         raise ValueError(f"Could not find JSON object in model output: {text[:400]}")
-    return json.loads(cleaned[start:end+1])
+    data = json.loads(cleaned[start:end+1])
+    data["source"] = "openclaw"
+    return EvaluationResult.from_dict(data)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -171,8 +178,8 @@ class Handler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", "0"))
             payload = json.loads(self.rfile.read(length).decode("utf-8"))
-        except Exception:
-            json_response(self, 400, {"error": "invalid_json"})
+        except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as e:
+            json_response(self, 400, {"error": "invalid_json", "message": str(e)})
             return
 
         target_project = payload.get("targetProject") or {}
@@ -187,11 +194,24 @@ class Handler(BaseHTTPRequestHandler):
             raw = call_openclaw(prompt, route["agentId"], route["sessionKey"])
             text = extract_text(raw)
             result = parse_agent_json(text)
-            result["route"] = route
-            json_response(self, 200, result)
-        except Exception as e:
+            response = result.to_dict()
+            response["route"] = route
+            json_response(self, 200, response)
+        except (urllib.error.URLError, urllib.error.HTTPError) as e:
             json_response(self, 502, {
-                "error": "openclaw_bridge_failed",
+                "error": "openclaw_network_error",
+                "message": str(e),
+            })
+        except (json.JSONDecodeError, ValueError, KeyError) as e:
+            json_response(self, 502, {
+                "error": "openclaw_parse_error",
+                "message": str(e),
+            })
+        except Exception as e:
+            import logging
+            logging.exception("Unexpected error in openclaw bridge")
+            json_response(self, 500, {
+                "error": "internal_error",
                 "message": str(e),
             })
 

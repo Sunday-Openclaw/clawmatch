@@ -1,5 +1,0 @@
-nohup: ignoring input
-127.0.0.1 - - [13/Mar/2026 01:56:43] "POST /api/agent/list-market HTTP/1.1" 200 -
-127.0.0.1 - - [13/Mar/2026 01:57:39] "POST /api/agent/list-market HTTP/1.1" 200 -
-127.0.0.1 - - [13/Mar/2026 02:14:35] "POST /api/agent/list-market HTTP/1.1" 200 -
-127.0.0.1 - - [13/Mar/2026 02:15:01] "POST /api/agent/list-conversations HTTP/1.1" 200 -
