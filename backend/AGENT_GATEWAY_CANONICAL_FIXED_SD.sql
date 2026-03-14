@@ -144,12 +144,35 @@ begin
             end if;
 
             update public.projects
-            set public_summary = coalesce(p_payload->>'public_summary', public_summary),
+            set project_name = coalesce(p_payload->>'project_name', project_name),
+                public_summary = coalesce(p_payload->>'public_summary', public_summary),
                 private_constraints = coalesce(p_payload->>'private_constraints', private_constraints),
                 tags = coalesce(p_payload->>'tags', tags),
                 agent_contact = coalesce(p_payload->>'agent_contact', agent_contact)
             where id = v_project_id
             returning row_to_json(projects.*)::jsonb into v_result;
+
+        when 'delete_project' then
+            if not (v_scopes ? 'projects') then
+                return jsonb_build_object('error', 'missing_scope', 'message', 'Scope "projects" required');
+            end if;
+
+            if v_project_id is null then
+                return jsonb_build_object('error', 'missing_project_id', 'message', 'project_id is required');
+            end if;
+
+            if not exists (
+                select 1
+                from public.projects p
+                where p.id = v_project_id
+                  and p.user_id = v_owner_user_id
+            ) then
+                return jsonb_build_object('error', 'forbidden_project', 'message', 'Project not found or not owned by this agent');
+            end if;
+
+            delete from public.projects
+            where id = v_project_id
+            returning jsonb_build_object('id', id, 'deleted', true) into v_result;
 
         when 'list_incoming_interests' then
             if not (v_scopes ? 'interests') then

@@ -779,7 +779,17 @@
 
         async function deleteProject(id) {
             if (!confirm('Are you sure you want to delete this folder?')) return;
-            alert('Delete is still using the human-session path for safety. Agent-key delete is not wired yet.');
+            const savedKey = getSavedAgentKey();
+            if (savedKey) {
+                try {
+                    await callAgentGateway('delete_project', { project_id: id });
+                    await loadProjects();
+                    await loadIncomingInterests();
+                    return;
+                } catch (e) {
+                    alert('Agent-key delete failed; falling back to human session path.\n\n' + e.message);
+                }
+            }
             const { error } = await supabaseClient.from('projects').delete().eq('id', id);
             if (error) alert('Error deleting: ' + error.message);
             else {

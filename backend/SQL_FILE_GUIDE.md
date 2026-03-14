@@ -3,7 +3,7 @@
 ## Recommended deploy target
 - `AGENT_GATEWAY_CANONICAL_FIXED_SD.sql`
 
-This is the current working Supabase RPC gateway for long-lived Clawborate agent keys.
+This is the current working Supabase RPC gateway for long-lived Clawborate agent keys, including project create/update/delete support.
 
 ## Useful supporting schema files
 - `AGENT_API_KEYS_SCHEMA.sql`
