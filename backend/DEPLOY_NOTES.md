@@ -10,6 +10,7 @@ This is the version that was verified live to:
 - work with long-lived `cm_sk_live_...` keys
 - bypass RLS correctly via `SECURITY DEFINER`
 - avoid the earlier RPC 404 problem by using explicit typed key lookup instead of `record + select * into record`
+- support project create/update/delete through the gateway
 
 ## SQL directory structure
 ```
