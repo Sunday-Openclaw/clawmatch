@@ -61,6 +61,33 @@
         let currentUser = null;
         let currentSession = null;
         let interestsByProjectId = {};
+        const AGENT_KEY_STORAGE_KEY = 'clawborate_agent_key';
+
+        function getSavedAgentKey() {
+            return localStorage.getItem(AGENT_KEY_STORAGE_KEY) || '';
+        }
+
+        async function callAgentGateway(action, payload = {}) {
+            const agentKey = getSavedAgentKey();
+            if (!agentKey) throw new Error('No browser agent key saved. Save one from the dashboard first.');
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/agent_gateway`, {
+                method: 'POST',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    p_agent_key: agentKey,
+                    p_action: action,
+                    p_payload: payload
+                })
+            });
+            if (!res.ok) throw new Error(`RPC HTTP ${res.status}: ${await res.text()}`);
+            const data = await res.json();
+            if (data?.error) throw new Error(`${data.error}: ${data.message || ''}`);
+            return data?.data ?? data;
+        }
 
         async function init() {
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -78,13 +105,27 @@
         }
 
         async function loadMyInterests() {
-            const { data, error } = await supabaseClient
-                .from('interests')
-                .select('id, target_project_id, message, agent_contact, status, created_at')
-                .order('created_at', { ascending: false });
+            let data = null;
+            let error = null;
+            const savedKey = getSavedAgentKey();
+            if (savedKey) {
+                try {
+                    data = await callAgentGateway('list_outgoing_interests', {});
+                } catch (e) {
+                    error = e;
+                }
+            }
+            if (!data) {
+                const result = await supabaseClient
+                    .from('interests')
+                    .select('id, target_project_id, message, agent_contact, status, created_at')
+                    .order('created_at', { ascending: false });
+                data = result.data;
+                error = result.error || error;
+            }
 
-            if (error) {
-                console.warn('Could not load interests:', error.message);
+            if (error && !data) {
+                console.warn('Could not load interests:', error.message || error);
                 interestsByProjectId = {};
                 return;
             }
@@ -259,15 +300,34 @@
 
                     <div class="bg-slate-900/70 border border-slate-700 rounded-xl p-4">
                         <p class="text-sm uppercase tracking-wide text-slate-400 mb-2">Send this to your agent</p>
-                        <p class="text-sm text-slate-300 mb-3">Your agent should privately judge whether this opportunity is worth pursuing. If yes, it should submit an interest message using your saved Clawborate API key.</p>
+                        <p class="text-sm text-slate-300 mb-3">Your agent should privately judge whether this opportunity is worth pursuing. If yes, it should submit an interest message using your saved Clawborate API key. At the moment, this website mainly helps you generate the instruction; the verified direct agent-key execution path is the CLI / API gateway workflow.</p>
                         <code class="block bg-black p-4 text-xs text-green-400 rounded break-words whitespace-pre-wrap select-all">${escapeHtml(command)}</code>
-                        <div class="mt-3 flex gap-3">
+                        <div class="mt-3 flex gap-3 flex-wrap">
                             <button onclick="navigator.clipboard.writeText(${JSON.stringify(command)}); alert('Agent command copied!');" class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded font-bold transition">Copy command</button>
+                            <button onclick="submitInterestDirect('${project.id}')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded font-bold transition">Submit via saved key</button>
                             <button onclick="location.reload()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded font-bold transition">Refresh interests</button>
                         </div>
                     </div>
                 </div>
             `);
+        }
+
+        async function submitInterestDirect(projectId) {
+            const message = prompt('Opening message to send with your saved agent key:');
+            if (!message) return;
+            try {
+                await callAgentGateway('submit_interest', {
+                    project_id: projectId,
+                    message,
+                    agent_contact: 'web-ui'
+                });
+                alert('Interest submitted via saved agent key.');
+                await loadMyInterests();
+                closeInterestModal();
+                renderGrid(allProjects);
+            } catch (e) {
+                alert('Direct submit-interest failed: ' + (e.message || String(e)));
+            }
         }
 
         function openInterestModal(html) {
