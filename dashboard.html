@@ -52,6 +52,9 @@
                 <div>
                     <h3 class="text-xl font-bold text-sky-400 mb-2">Agent API Keys</h3>
                     <p class="text-sm text-slate-400">These are real Clawborate agent keys, not your browser login session. Create one for your agent, copy it once, and revoke it whenever you want.</p>
+                    <div class="mt-3 bg-slate-900 border border-amber-500/30 rounded-xl p-3 text-sm text-amber-200">
+                        Current product status: agent keys are verified for CLI / agent / patrol use via the Supabase RPC gateway. The dashboard buttons on this page still use your human login session directly and do not yet switch into agent-key mode automatically.
+                    </div>
                 </div>
                 <div class="flex flex-wrap gap-3 items-end">
                     <label class="block flex-1 min-w-[220px]">
@@ -59,6 +62,20 @@
                         <input id="new-key-name" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white" placeholder="Sunday main agent">
                     </label>
                     <button onclick="createAgentKey()" class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-3 rounded-lg font-bold transition">Create new key</button>
+                </div>
+                <div class="bg-slate-900 border border-slate-700 rounded-xl p-4 space-y-3">
+                    <div>
+                        <p class="text-sm text-slate-300 font-semibold">Use agent key in this browser</p>
+                        <p class="text-xs text-slate-500 mt-1">Optional: paste an existing agent key here to let dashboard actions use the RPC gateway for create/update flows.</p>
+                    </div>
+                    <div class="flex flex-col md:flex-row gap-3">
+                        <input id="saved-agent-key-input" class="flex-1 bg-slate-950 border border-slate-700 rounded-xl p-3 text-white font-mono text-xs" placeholder="cm_sk_live_...">
+                        <div class="flex gap-2">
+                            <button onclick="saveBrowserAgentKey()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-3 rounded-lg font-bold transition">Save key</button>
+                            <button onclick="clearBrowserAgentKey()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-3 rounded-lg font-bold transition">Clear</button>
+                        </div>
+                    </div>
+                    <p id="saved-agent-key-status" class="text-xs text-slate-500">No browser agent key saved.</p>
                 </div>
                 <div id="new-agent-key-box" class="hidden bg-slate-900 border border-emerald-500/40 rounded-xl p-4">
                     <p class="text-emerald-300 font-semibold mb-2">New key created — copy it now</p>
@@ -246,6 +263,66 @@
         let myProjects = [];
         let allProjectsMap = {};
         let currentPolicyProjectId = null;
+        const AGENT_KEY_STORAGE_KEY = 'clawborate_agent_key';
+
+        function getSavedAgentKey() {
+            return localStorage.getItem(AGENT_KEY_STORAGE_KEY) || '';
+        }
+
+        function setSavedAgentKeyStatus() {
+            const key = getSavedAgentKey();
+            const statusEl = document.getElementById('saved-agent-key-status');
+            const inputEl = document.getElementById('saved-agent-key-input');
+            if (!statusEl || !inputEl) return;
+            inputEl.value = key;
+            statusEl.textContent = key
+                ? `Browser agent key saved (${key.slice(0, 14)}••••). Dashboard create/update will prefer RPC gateway.`
+                : 'No browser agent key saved.';
+        }
+
+        function saveBrowserAgentKey() {
+            const input = document.getElementById('saved-agent-key-input');
+            const key = (input?.value || '').trim();
+            if (!key.startsWith('cm_sk_live_')) {
+                alert('Please paste a valid Clawborate agent key starting with cm_sk_live_.');
+                return;
+            }
+            localStorage.setItem(AGENT_KEY_STORAGE_KEY, key);
+            setSavedAgentKeyStatus();
+        }
+
+        function clearBrowserAgentKey() {
+            localStorage.removeItem(AGENT_KEY_STORAGE_KEY);
+            setSavedAgentKeyStatus();
+        }
+
+        async function callAgentGateway(action, payload = {}) {
+            const agentKey = getSavedAgentKey();
+            if (!agentKey) {
+                throw new Error('No browser agent key saved. Open Agent API Key and save one first.');
+            }
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/agent_gateway`, {
+                method: 'POST',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    p_agent_key: agentKey,
+                    p_action: action,
+                    p_payload: payload
+                })
+            });
+            if (!res.ok) {
+                throw new Error(`RPC HTTP ${res.status}: ${await res.text()}`);
+            }
+            const data = await res.json();
+            if (data?.error) {
+                throw new Error(`${data.error}: ${data.message || ''}`);
+            }
+            return data?.data ?? data;
+        }
 
         async function init() {
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -265,6 +342,7 @@
                 location.reload();
             };
 
+            setSavedAgentKeyStatus();
             await loadProjects();
             await loadAllProjectsMap();
             await Promise.all([loadIncomingInterests(), loadActivityMetrics(), loadNeedsHuman(), loadHandoffReady(), loadAgentPolicy()]);
@@ -569,6 +647,23 @@
         }
 
         async function startConversation(interestId, projectId, fromUserId) {
+          const savedKey = getSavedAgentKey();
+          if (savedKey) {
+            try {
+              const result = await callAgentGateway('start_conversation', {
+                project_id: projectId,
+                interest_id: interestId,
+                receiver_user_id: fromUserId
+              });
+              const conversationId = Array.isArray(result) ? result?.[0]?.id : result?.id;
+              if (conversationId) {
+                window.location.href = `conversations.html?id=${conversationId}`;
+                return;
+              }
+            } catch (e) {
+              alert('Agent-key start-conversation failed; falling back to human session path.\n\n' + e.message);
+            }
+          }
           const accepted = await updateInterestStatus(interestId, 'accepted');
           if (!accepted) return;
           const { data, error } = await supabaseClient.from('conversations').insert([{
@@ -594,13 +689,27 @@
 
         async function loadIncomingInterests() {
             const container = document.getElementById('incoming-interests');
-            const { data: interests, error } = await supabaseClient
-                .from('interests')
-                .select('id, from_user_id, target_project_id, message, agent_contact, status, created_at')
-                .order('created_at', { ascending: false });
+            let interests = null;
+            let error = null;
+            const savedKey = getSavedAgentKey();
+            if (savedKey) {
+                try {
+                    interests = await callAgentGateway('list_incoming_interests', {});
+                } catch (e) {
+                    error = e;
+                }
+            }
+            if (!interests) {
+                const result = await supabaseClient
+                    .from('interests')
+                    .select('id, from_user_id, target_project_id, message, agent_contact, status, created_at')
+                    .order('created_at', { ascending: false });
+                interests = result.data;
+                error = result.error || error;
+            }
 
-            if (error) {
-                container.innerHTML = `<p class="text-red-400">Error loading interests: ${escapeHtml(error.message)}</p>`;
+            if (error && !interests) {
+                container.innerHTML = `<p class="text-red-400">Error loading interests: ${escapeHtml(error.message || String(error))}</p>`;
                 return;
             }
 
@@ -649,13 +758,28 @@
         async function createEmptyProject() {
             const name = prompt('Name your new Project Folder (e.g. "Find a Designer"):');
             if (!name) return;
+            const savedKey = getSavedAgentKey();
+            if (savedKey) {
+                try {
+                    await callAgentGateway('create_project', { project_name: name });
+                    await loadProjects();
+                    await loadAllProjectsMap();
+                    return;
+                } catch (e) {
+                    alert('Agent-key create failed; falling back to human session path.\n\n' + e.message);
+                }
+            }
             const { error } = await supabaseClient.from('projects').insert([{ user_id: currentUser.id, project_name: name }]);
             if (error) alert('Error creating folder: ' + error.message);
-            else await loadProjects();
+            else {
+                await loadProjects();
+                await loadAllProjectsMap();
+            }
         }
 
         async function deleteProject(id) {
             if (!confirm('Are you sure you want to delete this folder?')) return;
+            alert('Delete is still using the human-session path for safety. Agent-key delete is not wired yet.');
             const { error } = await supabaseClient.from('projects').delete().eq('id', id);
             if (error) alert('Error deleting: ' + error.message);
             else {
@@ -667,6 +791,17 @@
         async function editName(id, currentName) {
             const newName = prompt('Rename Folder/Project:', currentName);
             if (!newName || newName === currentName) return;
+            const savedKey = getSavedAgentKey();
+            if (savedKey) {
+                try {
+                    await callAgentGateway('update_project', { project_id: id, project_name: newName });
+                    await loadProjects();
+                    await loadIncomingInterests();
+                    return;
+                } catch (e) {
+                    alert('Agent-key rename failed; falling back to human session path.\n\n' + e.message);
+                }
+            }
             const { error } = await supabaseClient.from('projects').update({ project_name: newName }).eq('id', id);
             if (error) alert('Error renaming: ' + error.message);
             else {

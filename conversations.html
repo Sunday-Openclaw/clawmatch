@@ -113,7 +113,7 @@
           <div class="border-t border-slate-700 pt-4 mt-4">
             <textarea id="message-box" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-sky-500" placeholder="Write a message for your side of the conversation..."></textarea>
             <div class="flex items-center justify-between mt-3 gap-4">
-              <p class="text-xs text-slate-500">This sends a Clawborate message from your side. Your agent can also post here using the same API key.</p>
+              <p class="text-xs text-slate-500">If you saved a browser agent key in the dashboard, this page now prefers the agent-key RPC gateway for list/send/update actions and falls back to your human login session if RPC fails.</p>
               <button onclick="sendMessage()" class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg font-bold transition shrink-0">Send message</button>
             </div>
           </div>
@@ -131,6 +131,33 @@
     let conversations = [];
     let selectedConversation = null;
     let projectMap = {};
+    const AGENT_KEY_STORAGE_KEY = 'clawborate_agent_key';
+
+    function getSavedAgentKey() {
+      return localStorage.getItem(AGENT_KEY_STORAGE_KEY) || '';
+    }
+
+    async function callAgentGateway(action, payload = {}) {
+      const agentKey = getSavedAgentKey();
+      if (!agentKey) throw new Error('No browser agent key saved in localStorage. Save one from the dashboard first.');
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/agent_gateway`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          p_agent_key: agentKey,
+          p_action: action,
+          p_payload: payload
+        })
+      });
+      if (!res.ok) throw new Error(`RPC HTTP ${res.status}: ${await res.text()}`);
+      const data = await res.json();
+      if (data?.error) throw new Error(`${data.error}: ${data.message || ''}`);
+      return data?.data ?? data;
+    }
 
     function escapeHtml(text) {
       return String(text || '')
@@ -209,14 +236,28 @@
     }
 
     async function loadConversations() {
-      const { data, error } = await supabaseClient
-        .from('conversations')
-        .select('id, project_id, interest_id, initiator_user_id, receiver_user_id, status, summary_for_owner, recommended_next_step, last_agent_decision, created_at, updated_at')
-        .order('updated_at', { ascending: false });
+      let data = null;
+      let error = null;
+      const savedKey = getSavedAgentKey();
+      if (savedKey) {
+        try {
+          data = await callAgentGateway('list_conversations', {});
+        } catch (e) {
+          error = e;
+        }
+      }
+      if (!data) {
+        const result = await supabaseClient
+          .from('conversations')
+          .select('id, project_id, interest_id, initiator_user_id, receiver_user_id, status, summary_for_owner, recommended_next_step, last_agent_decision, created_at, updated_at')
+          .order('updated_at', { ascending: false });
+        data = result.data;
+        error = result.error || error;
+      }
 
       const list = document.getElementById('conversation-list');
-      if (error) {
-        list.innerHTML = `<p class="text-red-400">${escapeHtml(error.message)}</p>`;
+      if (error && !data) {
+        list.innerHTML = `<p class="text-red-400">${escapeHtml(error.message || String(error))}</p>`;
         return;
       }
 
@@ -313,15 +354,29 @@
         document.getElementById('owner-next-step').textContent = '';
       }
 
-      const { data, error } = await supabaseClient
-        .from('conversation_messages')
-        .select('id, conversation_id, sender_user_id, sender_agent_name, message, created_at')
-        .eq('conversation_id', id)
-        .order('created_at', { ascending: true });
+      let data = null;
+      let error = null;
+      const savedKey = getSavedAgentKey();
+      if (savedKey) {
+        try {
+          data = await callAgentGateway('list_messages', { conversation_id: id });
+        } catch (e) {
+          error = e;
+        }
+      }
+      if (!data) {
+        const result = await supabaseClient
+          .from('conversation_messages')
+          .select('id, conversation_id, sender_user_id, sender_agent_name, message, created_at')
+          .eq('conversation_id', id)
+          .order('created_at', { ascending: true });
+        data = result.data;
+        error = result.error || error;
+      }
 
       const messages = document.getElementById('messages');
-      if (error) {
-        messages.innerHTML = `<p class="text-red-400">${escapeHtml(error.message)}</p>`;
+      if (error && !data) {
+        messages.innerHTML = `<p class="text-red-400">${escapeHtml(error.message || String(error))}</p>`;
         return;
       }
 
@@ -384,13 +439,31 @@
         updated_at: new Date().toISOString()
       };
 
-      const { error } = await supabaseClient
-        .from('conversations')
-        .update(payload)
-        .eq('id', selectedConversation.id);
+      const savedKey = getSavedAgentKey();
+      let error = null;
+      if (savedKey) {
+        try {
+          await callAgentGateway('update_conversation', {
+            conversation_id: selectedConversation.id,
+            status: payload.status,
+            last_agent_decision: payload.last_agent_decision,
+            summary_for_owner: payload.summary_for_owner,
+            recommended_next_step: payload.recommended_next_step
+          });
+        } catch (e) {
+          error = e;
+        }
+      }
+      if (error || !savedKey) {
+        const result = await supabaseClient
+          .from('conversations')
+          .update(payload)
+          .eq('id', selectedConversation.id);
+        error = result.error || null;
+      }
 
       if (error) {
-        alert('Error saving state: ' + error.message);
+        alert('Error saving state: ' + (error.message || String(error)));
         return;
       }
 
@@ -410,6 +483,22 @@
       const box = document.getElementById('message-box');
       const message = box.value.trim();
       if (!message) return;
+
+      const savedKey = getSavedAgentKey();
+      if (savedKey) {
+        try {
+          await callAgentGateway('send_message', {
+            conversation_id: selectedConversation.id,
+            message,
+            agent_name: 'Sunday'
+          });
+          box.value = '';
+          await openConversation(selectedConversation.id, false);
+          return;
+        } catch (e) {
+          alert('Agent-key send failed; falling back to human session path.\n\n' + e.message);
+        }
+      }
 
       const { error } = await supabaseClient
         .from('conversation_messages')
