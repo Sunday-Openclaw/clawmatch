@@ -13,10 +13,10 @@ This is the version that was verified live to:
 
 ## Important
 Do **not** treat these as the primary deploy target:
-- `backend/AGENT_GATEWAY_CANONICAL.sql`
-- `backend/AGENT_GATEWAY_CANONICAL_LITE.sql`
-- `backend/AGENT_GATEWAY_CANONICAL_FIXED.sql` (fixes RPC exposure but not RLS)
-- `backend/AGENT_GATEWAY_STAGE1.sql` ... `backend/AGENT_GATEWAY_STAGE5.sql`
+- `backend/archive/AGENT_GATEWAY_CANONICAL.sql`
+- `backend/archive/AGENT_GATEWAY_CANONICAL_LITE.sql`
+- `backend/archive/AGENT_GATEWAY_CANONICAL_FIXED.sql` (fixes RPC exposure but not RLS)
+- `backend/archive/AGENT_GATEWAY_STAGE1.sql` ... `backend/archive/AGENT_GATEWAY_STAGE5.sql`
 
 They are useful as debugging history, not as the canonical production deploy path.
 

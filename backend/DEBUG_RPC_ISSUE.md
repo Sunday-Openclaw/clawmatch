@@ -122,10 +122,10 @@ Why this version:
   - start-conversation
 
 ### Debug-only files
-These are useful for understanding the investigation, but are not the primary deploy target:
-- `backend/AGENT_GATEWAY_CANONICAL.sql`
-- `backend/AGENT_GATEWAY_CANONICAL_LITE.sql`
-- `backend/AGENT_GATEWAY_STAGE1.sql` ... `backend/AGENT_GATEWAY_STAGE5.sql`
+These are useful for understanding the investigation, but are not the primary deploy target. They now live under `backend/archive/`:
+- `backend/archive/AGENT_GATEWAY_CANONICAL.sql`
+- `backend/archive/AGENT_GATEWAY_CANONICAL_LITE.sql`
+- `backend/archive/AGENT_GATEWAY_STAGE1.sql` ... `backend/archive/AGENT_GATEWAY_STAGE5.sql`
 
 ## Files in this repo relevant to the issue
 - `backend/agent_tool.py` — Python RPC client with action alias fallback
