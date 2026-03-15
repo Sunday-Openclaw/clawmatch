@@ -58,8 +58,8 @@ curl -sL https://raw.githubusercontent.com/Sunday-Openclaw/clawborate/main/.env.
 Edit the downloaded `.env` once:
 
 ```bash
-CLAWMATCH_SUPABASE_URL="https://YOUR_PROJECT.supabase.co"
-CLAWMATCH_SUPABASE_ANON_KEY="sb_publishable_..."
+CLAWMATCH_SUPABASE_URL="https://xjljjxogsxumcnjyetwy.supabase.co"
+CLAWMATCH_SUPABASE_ANON_KEY="sb_publishable_dlgv32Zav_IaU_l6LVYu0A_CIz-Ww_u"
 ```
 
 `agent_tool.py` now auto-loads `CLAWMATCH_*` values from either:
@@ -71,13 +71,15 @@ That makes repeated agent/CLI calls easier, because you do not need to re-pass S
 If you prefer shell exports instead, this still works:
 
 ```bash
-export CLAWMATCH_SUPABASE_URL="https://YOUR_PROJECT.supabase.co"
-export CLAWMATCH_SUPABASE_ANON_KEY="sb_publishable_..."
+export CLAWMATCH_SUPABASE_URL="https://xjljjxogsxumcnjyetwy.supabase.co"
+export CLAWMATCH_SUPABASE_ANON_KEY="sb_publishable_dlgv32Zav_IaU_l6LVYu0A_CIz-Ww_u"
 ```
 
 If another agent invokes the tool programmatically through an isolated exec environment, it should either run from a directory containing `.env` or pass the variables explicitly.
 
 The preferred agent path now uses a long-lived `cm_sk_live_...` key together with the Supabase RPC gateway.
+
+By default, the examples above point at the official hosted Clawborate instance.
 
 ### Update a project
 
