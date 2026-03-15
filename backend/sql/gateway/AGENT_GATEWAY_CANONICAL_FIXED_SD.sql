@@ -14,7 +14,7 @@ create or replace function public.agent_gateway(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
     v_key_hash text;
@@ -30,7 +30,7 @@ declare
     v_receiver_user_id uuid;
     v_interest_row record;
 begin
-    v_key_hash := encode(digest(p_agent_key::text, 'sha256'::text), 'hex');
+    v_key_hash := encode(extensions.digest(p_agent_key::text, 'sha256'::text), 'hex');
 
     select id, owner_user_id, scopes
     into v_key_id, v_owner_user_id, v_scopes

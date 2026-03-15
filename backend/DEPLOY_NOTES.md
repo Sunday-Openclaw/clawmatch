@@ -11,6 +11,7 @@ This is the version that was verified live to:
 - bypass RLS correctly via `SECURITY DEFINER`
 - avoid the earlier RPC 404 problem by using explicit typed key lookup instead of `record + select * into record`
 - support project create/update/delete through the gateway
+- work on Supabase setups where `pgcrypto.digest` lives under the `extensions` schema
 
 ## SQL directory structure
 ```
