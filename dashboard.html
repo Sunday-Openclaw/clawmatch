@@ -883,7 +883,9 @@
                     </div>
                     <div class="flex items-center gap-3">
                         <span class="text-xs px-2 py-1 rounded-full ${row.is_active ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-700 text-slate-300'}">${row.is_active ? 'active' : 'revoked'}</span>
-                        ${row.is_active ? `<button onclick="revokeAgentKey('${row.id}')" class="text-red-300 hover:text-red-200 text-sm font-semibold">Revoke</button>` : ''}
+                        ${row.is_active
+                            ? `<button onclick="revokeAgentKey('${row.id}')" class="text-red-300 hover:text-red-200 text-sm font-semibold">Revoke</button>`
+                            : `<button onclick="deleteAgentKey('${row.id}')" class="text-slate-300 hover:text-white text-sm font-semibold">Delete</button>`}
                     </div>
                 </div>
             `).join('');
