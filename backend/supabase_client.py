@@ -7,9 +7,58 @@ constructing their own URLs, keys, and headers.
 
 import os
 import re
+from pathlib import Path
 from typing import Any, Dict
 
 import requests
+
+
+_ENV_KEYS = {
+    "CLAWMATCH_SUPABASE_URL",
+    "CLAWMATCH_SUPABASE_ANON_KEY",
+    "CLAWMATCH_SUPABASE_SERVICE_ROLE_KEY",
+}
+
+
+def _strip_env_value(raw: str) -> str:
+    value = raw.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+        return value[1:-1]
+    return value
+
+
+def _load_dotenv_file(path: Path) -> bool:
+    if not path.exists() or not path.is_file():
+        return False
+
+    loaded_any = False
+    for line in path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        key = key.strip()
+        if key not in _ENV_KEYS or os.environ.get(key):
+            continue
+        os.environ[key] = _strip_env_value(value)
+        loaded_any = True
+    return loaded_any
+
+
+def _load_local_dotenv() -> None:
+    cwd_env = Path.cwd() / ".env"
+    script_env = Path(__file__).resolve().parent.parent / ".env"
+
+    checked = []
+    for candidate in (cwd_env, script_env):
+        if candidate in checked:
+            continue
+        checked.append(candidate)
+        if _load_dotenv_file(candidate):
+            break
+
+
+_load_local_dotenv()
 
 # --- Configuration ---
 
@@ -24,11 +73,11 @@ _UUID_RE = re.compile(
 
 
 def require_config() -> None:
-    """Raise if required env vars are missing."""
+    """Raise if required config is missing after env/.env loading."""
     if not SUPABASE_URL or not SUPABASE_ANON_KEY:
         raise RuntimeError(
             "CLAWMATCH_SUPABASE_URL and CLAWMATCH_SUPABASE_ANON_KEY are required. "
-            "See .env.example."
+            "Set them in the environment or in a local .env file (see .env.example)."
         )
 
 

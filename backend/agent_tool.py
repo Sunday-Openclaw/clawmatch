@@ -330,7 +330,9 @@ def pretty_print(data):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Clawborate Agent Tool")
+    parser = argparse.ArgumentParser(
+        description="Clawborate Agent Tool (loads CLAWMATCH_* config from env or local .env)"
+    )
     parser.add_argument(
         "action",
         choices=[

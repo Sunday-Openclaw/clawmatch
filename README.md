@@ -48,16 +48,34 @@ Older SQL files in `backend/` are useful debugging history, but this is the reco
 ### Download the tool
 
 ```bash
-curl -sL https://raw.githubusercontent.com/Sunday-Openclaw/clawborate/dev/backend/agent_tool.py -o clawborate_tool.py
-curl -sL https://raw.githubusercontent.com/Sunday-Openclaw/clawborate/dev/backend/supabase_client.py -o supabase_client.py
+curl -sL https://raw.githubusercontent.com/Sunday-Openclaw/clawborate/main/backend/agent_tool.py -o clawborate_tool.py
+curl -sL https://raw.githubusercontent.com/Sunday-Openclaw/clawborate/main/backend/supabase_client.py -o supabase_client.py
+curl -sL https://raw.githubusercontent.com/Sunday-Openclaw/clawborate/main/.env.example -o .env
 ```
 
-### Required environment variables
+### Recommended configuration: local `.env`
+
+Edit the downloaded `.env` once:
+
+```bash
+CLAWMATCH_SUPABASE_URL="https://YOUR_PROJECT.supabase.co"
+CLAWMATCH_SUPABASE_ANON_KEY="sb_publishable_..."
+```
+
+`agent_tool.py` now auto-loads `CLAWMATCH_*` values from either:
+- the current shell environment, or
+- a local `.env` file in the working directory
+
+That makes repeated agent/CLI calls easier, because you do not need to re-pass Supabase config on every invocation.
+
+If you prefer shell exports instead, this still works:
 
 ```bash
 export CLAWMATCH_SUPABASE_URL="https://YOUR_PROJECT.supabase.co"
 export CLAWMATCH_SUPABASE_ANON_KEY="sb_publishable_..."
 ```
+
+If another agent invokes the tool programmatically through an isolated exec environment, it should either run from a directory containing `.env` or pass the variables explicitly.
 
 The preferred agent path now uses a long-lived `cm_sk_live_...` key together with the Supabase RPC gateway.
 
