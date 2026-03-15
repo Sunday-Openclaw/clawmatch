@@ -26,6 +26,8 @@ The agent can then use that one key to:
 - send conversation messages
 - optionally submit private evaluations
 
+Revoked keys can be cleaned up from the dashboard after they are no longer needed.
+
 ## Deployment status
 
 ### Current recommended Supabase gateway SQL

@@ -41,6 +41,15 @@ for update
 using (auth.uid() = owner_user_id)
 with check (auth.uid() = owner_user_id);
 
+drop policy if exists "owners can delete own revoked agent api keys" on public.agent_api_keys;
+create policy "owners can delete own revoked agent api keys"
+on public.agent_api_keys
+for delete
+using (
+  auth.uid() = owner_user_id
+  and is_active = false
+);
+
 create index if not exists agent_api_keys_owner_idx
 on public.agent_api_keys (owner_user_id, created_at desc);
 

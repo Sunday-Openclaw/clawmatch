@@ -936,6 +936,16 @@
             await loadAgentKeys();
         }
 
+        async function deleteAgentKey(id) {
+            if (!confirm('Delete this revoked key from the dashboard list? This cannot be undone.')) return;
+            const { error } = await supabaseClient.from('agent_api_keys').delete().eq('id', id).eq('is_active', false);
+            if (error) {
+                alert('Could not delete key: ' + error.message);
+                return;
+            }
+            await loadAgentKeys();
+        }
+
         function toggleKeyModal() {
             const el = document.getElementById('api-key-modal');
             el.classList.toggle('hidden');
