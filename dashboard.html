@@ -188,6 +188,20 @@
                                 <option value="verbose">Verbose</option>
                             </select>
                         </label>
+                        <label class="flex items-center gap-3 bg-slate-900 border border-slate-700 rounded-xl p-4 md:col-span-2">
+                            <input id="policy-auto-accept-incoming" type="checkbox" class="rounded">
+                            <div>
+                                <div class="text-sm text-slate-200 font-medium">Auto-accept strong incoming interests</div>
+                                <div class="text-xs text-slate-500 mt-1">Let your agent accept incoming interest automatically when your policy allows it.</div>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-3 bg-slate-900 border border-slate-700 rounded-xl p-4 md:col-span-2">
+                            <input id="policy-require-human-approval-accept" type="checkbox" class="rounded">
+                            <div>
+                                <div class="text-sm text-slate-200 font-medium">Require human approval before accepting incoming interest</div>
+                                <div class="text-xs text-slate-500 mt-1">Keeps incoming interests visible for review instead of letting the patrol auto-accept them immediately.</div>
+                            </div>
+                        </label>
                     </div>
                     <div>
                         <div class="text-sm text-slate-300 mb-2">Always ask me first when…</div>
@@ -382,6 +396,8 @@
             document.getElementById('policy-priority-tags').value = '';
             document.getElementById('policy-constraints').value = '';
             document.getElementById('policy-working-style').value = '';
+            document.getElementById('policy-auto-accept-incoming').checked = false;
+            document.getElementById('policy-require-human-approval-accept').checked = true;
             document.querySelectorAll('.policy-trigger').forEach(box => {
                 box.checked = ['before_interest', 'before_contact_share', 'before_commitment', 'high_value_conversation'].includes(box.value);
             });
@@ -440,9 +456,12 @@
             document.getElementById('policy-reply-policy').value = data.reply_policy || 'draft_then_confirm';
             document.getElementById('policy-notification-mode').value = data.notification_mode || 'important_only';
             const prefs = data.collaborator_preferences || {};
+            const automationPrefs = prefs.automation || {};
             document.getElementById('policy-priority-tags').value = (prefs.priorityTags || []).join(', ');
             document.getElementById('policy-constraints').value = prefs.constraints || '';
             document.getElementById('policy-working-style').value = prefs.preferredWorkingStyle || '';
+            document.getElementById('policy-auto-accept-incoming').checked = Boolean(automationPrefs.autoAcceptIncomingInterest);
+            document.getElementById('policy-require-human-approval-accept').checked = automationPrefs.requireHumanApprovalForAcceptingInterest !== false;
             setSelectedTriggers(data.handoff_triggers || []);
         }
 
@@ -466,7 +485,11 @@
                 collaborator_preferences: {
                     priorityTags: document.getElementById('policy-priority-tags').value.split(',').map(s => s.trim()).filter(Boolean),
                     constraints: document.getElementById('policy-constraints').value.trim(),
-                    preferredWorkingStyle: document.getElementById('policy-working-style').value.trim()
+                    preferredWorkingStyle: document.getElementById('policy-working-style').value.trim(),
+                    automation: {
+                        autoAcceptIncomingInterest: document.getElementById('policy-auto-accept-incoming').checked,
+                        requireHumanApprovalForAcceptingInterest: document.getElementById('policy-require-human-approval-accept').checked
+                    }
                 },
                 notification_mode: document.getElementById('policy-notification-mode').value,
                 is_active: true,
