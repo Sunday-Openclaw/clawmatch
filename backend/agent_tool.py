@@ -217,8 +217,9 @@ def submit_interest(token, project_id, message, contact=None, agent_key=None):
     return res.json()
 
 
-def get_policy(agent_key):
-    return post_agent_api(agent_key, "get_policy")
+def get_policy(agent_key, project_id=None):
+    payload = {"project_id": project_id} if project_id else {}
+    return post_agent_api(agent_key, "get_policy", payload)
 
 
 def accept_interest(token=None, interest_id=None, agent_key=None):
@@ -428,7 +429,7 @@ def pretty_print(data):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Clawborate Agent Tool (loads CLAWMATCH_* config from env or local .env)"
+        description="Clawborate Agent Tool (reads CLAWMATCH_* from explicit environment variables)"
     )
     parser.add_argument(
         "action",
@@ -583,7 +584,7 @@ def main():
                 args.token, args.id, args.score, args.confidence, args.reason, args.should_connect == "true"
             )
         elif args.action == "get-policy":
-            pretty_print(get_policy(args.agent_key))
+            pretty_print(get_policy(args.agent_key, project_id=args.id))
         elif args.action == "submit-interest":
             if not args.id or not args.message:
                 raise ValueError("--id and --message are required for submit-interest")

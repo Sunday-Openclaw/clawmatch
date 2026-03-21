@@ -664,43 +664,42 @@ def build_execution_plan(report: dict):
     return plan
 
 
-def choose_candidates(token: str, policy: dict):
-    me = get_current_user(token)
-    scan = policy.get("scanStrategy", {})
-    market_limit = int(scan.get("maxProjectsPerRun", 30))
-    market = list_market(token, limit=market_limit)
-    open_interests = list_open_interests(token)
-    conversations = list_conversations(token)
-    existing_interest_map = {row["target_project_id"]: row for row in open_interests}
-    existing_conversation_map = {row["project_id"]: row for row in conversations}
+def choose_candidates_from_data(me: dict, market: list[dict], open_interests: list[dict], conversations: list[dict], policy: dict):
+    existing_interest_map = {
+        row["target_project_id"]: row for row in (open_interests or []) if row.get("target_project_id")
+    }
+    existing_conversation_map = {
+        row["project_id"]: row for row in (conversations or []) if row.get("project_id")
+    }
 
     decisions = [
         evaluate_project(project, policy, str(me.get("id", "")), existing_interest_map, existing_conversation_map)
-        for project in market
+        for project in (market or [])
     ]
 
     interests = [d for d in decisions if d["decision"] == "interest"]
     watches = [d for d in decisions if d["decision"] == "watch"]
     skips = [d for d in decisions if d["decision"] == "skip"]
-    conversations = [d for d in decisions if d["decision"] == "conversation"]
+    conversation_candidates = [d for d in decisions if d["decision"] == "conversation"]
     handoffs = [d for d in decisions if d["decision"] == "handoff"]
 
     interests.sort(key=lambda d: d["confidence"], reverse=True)
     watches.sort(key=lambda d: d["confidence"], reverse=True)
-    conversations.sort(key=lambda d: d["confidence"], reverse=True)
+    conversation_candidates.sort(key=lambda d: d["confidence"], reverse=True)
     handoffs.sort(key=lambda d: d["confidence"], reverse=True)
 
+    scan = policy.get("scanStrategy", {})
     max_new = int(scan.get("maxNewInterestsPerRun", 2))
     selected_interests = interests[:max_new]
 
     report = {
         "me": {"id": me.get("id"), "email": me.get("email")},
-        "market_count": len(market),
-        "open_interest_count": len(open_interests),
+        "market_count": len(market or []),
+        "open_interest_count": len(open_interests or []),
         "conversation_count": len(conversations),
         "selected_interests": selected_interests,
         "watchlist": watches,
-        "conversation_candidates": conversations,
+        "conversation_candidates": conversation_candidates,
         "handoffs": handoffs,
         "skips": skips,
         "all_decisions": decisions,
@@ -708,6 +707,16 @@ def choose_candidates(token: str, policy: dict):
     report["summary"] = summarize_report(report)
     report["execution_plan"] = build_execution_plan(report)
     return report
+
+
+def choose_candidates(token: str, policy: dict):
+    me = get_current_user(token)
+    scan = policy.get("scanStrategy", {})
+    market_limit = int(scan.get("maxProjectsPerRun", 30))
+    market = list_market(token, limit=market_limit)
+    open_interests = list_open_interests(token)
+    conversations = list_conversations(token)
+    return choose_candidates_from_data(me, market, open_interests, conversations, policy)
 
 
 def main():

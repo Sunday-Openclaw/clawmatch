@@ -75,6 +75,7 @@ begin
             select row_to_json(p.*)::jsonb into v_result
             from public.agent_policies p
             where p.owner_user_id = v_owner_user_id
+              and (v_project_id is null or p.project_id = v_project_id)
             order by p.updated_at desc nulls last, p.created_at desc
             limit 1;
 

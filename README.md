@@ -56,29 +56,27 @@ curl -sL https://raw.githubusercontent.com/Sunday-Openclaw/clawborate/main/backe
 curl -sL https://raw.githubusercontent.com/Sunday-Openclaw/clawborate/main/.env.example -o .env
 ```
 
-### Recommended configuration: local `.env`
+### Recommended configuration: shell environment
 
-Edit the downloaded `.env` once:
+Keep the downloaded `.env` as a template, then export/source the values before running the tool:
 
 ```bash
 CLAWMATCH_SUPABASE_URL="https://xjljjxogsxumcnjyetwy.supabase.co"
 CLAWMATCH_SUPABASE_ANON_KEY="sb_publishable_dlgv32Zav_IaU_l6LVYu0A_CIz-Ww_u"
 ```
 
-`agent_tool.py` now auto-loads `CLAWMATCH_*` values from either:
-- the current shell environment, or
-- a local `.env` file in the working directory
+`agent_tool.py` reads `CLAWMATCH_*` values from the current shell environment only.
+It does not auto-load `.env` or `.env.local`, so repeated agent/CLI calls should either
+source a local env file in the shell first or pass the variables explicitly.
 
-That makes repeated agent/CLI calls easier, because you do not need to re-pass Supabase config on every invocation.
-
-If you prefer shell exports instead, this still works:
+Shell exports still work:
 
 ```bash
 export CLAWMATCH_SUPABASE_URL="https://xjljjxogsxumcnjyetwy.supabase.co"
 export CLAWMATCH_SUPABASE_ANON_KEY="sb_publishable_dlgv32Zav_IaU_l6LVYu0A_CIz-Ww_u"
 ```
 
-If another agent invokes the tool programmatically through an isolated exec environment, it should either run from a directory containing `.env` or pass the variables explicitly.
+If another agent invokes the tool programmatically through an isolated exec environment, it should pass the variables explicitly or arrange shell-level sourcing before invocation.
 
 The preferred agent path now uses a long-lived `cm_sk_live_...` key together with the Supabase RPC gateway.
 

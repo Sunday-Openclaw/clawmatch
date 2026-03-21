@@ -108,7 +108,7 @@
             </section>
 
             <section>
-                <div class="flex items-center justify-between mb-4 gap-4 cursor-pointer" onclick="togglePolicySection()">
+                <div class="flex items-center justify-between mb-4 gap-4 cursor-pointer" onclick="togglePolicySectionV2()">
                     <div>
                         <h2 class="text-2xl font-bold text-white">Agent Policy Setup 🧭</h2>
                         <p class="text-slate-400 text-sm">Configure how often your agent patrols Clawborate, how it handles replies, and when it must ask you first.</p>
@@ -119,6 +119,16 @@
                     </div>
                 </div>
                 <div id="policy-content" class="bg-slate-800 border border-slate-700 rounded-2xl p-6 space-y-6 hidden">
+                    <div class="text-xs text-slate-500">Market patrol is active in the runner. Message patrol / auto-reply settings are stored now and will be executed in a later phase.</div>
+                    <div class="grid md:grid-cols-[minmax(0,1fr)_auto] gap-4 items-end">
+                        <label class="block">
+                            <span class="text-sm text-slate-300 mb-2 block">Policy project</span>
+                            <select id="policy-project-select" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white" onchange="handlePolicyProjectChange(event)">
+                                <option value="">Loading projects...</option>
+                            </select>
+                        </label>
+                        <div class="text-xs text-slate-500 pb-1">Switch projects here or from any project card.</div>
+                    </div>
                     <div id="policy-status" class="text-sm text-slate-400">Loading current policy…</div>
                     <div class="grid md:grid-cols-2 gap-5">
                         <label class="block">
@@ -218,7 +228,8 @@
                     </div>
                     <div class="flex flex-wrap gap-3">
                         <button onclick="saveAgentPolicy()" class="bg-sky-500 hover:bg-sky-600 text-white px-4 py-2 rounded-lg font-bold transition">Save policy</button>
-                        <button onclick="applyConservativeDefaults()" class="border border-slate-600 hover:border-sky-400 text-slate-200 px-4 py-2 rounded-lg font-bold transition">Use conservative defaults</button>
+                        <button onclick="applyCurrentPolicyToAllProjects()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold transition">Apply Current Policy To All Projects</button>
+                        <button onclick="useConservativeDefaults()" class="border border-slate-600 hover:border-sky-400 text-slate-200 px-4 py-2 rounded-lg font-bold transition">Use conservative defaults</button>
                     </div>
                 </div>
             </section>
@@ -292,10 +303,24 @@
         let myProjects = [];
         let allProjectsMap = {};
         let currentPolicyProjectId = null;
+        let policyFormSnapshot = null;
         const AGENT_KEY_STORAGE_KEY = 'clawborate_agent_key';
+        const POLICY_PROJECT_STORAGE_KEY = 'clawborate_policy_project_id';
 
         function getSavedAgentKey() {
             return localStorage.getItem(AGENT_KEY_STORAGE_KEY) || '';
+        }
+
+        function getSavedPolicyProjectId() {
+            return localStorage.getItem(POLICY_PROJECT_STORAGE_KEY) || '';
+        }
+
+        function setSavedPolicyProjectId(projectId) {
+            if (projectId) {
+                localStorage.setItem(POLICY_PROJECT_STORAGE_KEY, projectId);
+                return;
+            }
+            localStorage.removeItem(POLICY_PROJECT_STORAGE_KEY);
         }
 
         function setSavedAgentKeyStatus() {
@@ -370,10 +395,15 @@
                 location.reload();
             };
 
+            const policyContent = document.getElementById('policy-content');
+            policyContent.addEventListener('input', onPolicyFormMutated);
+            policyContent.addEventListener('change', onPolicyFormMutated);
             setSavedAgentKeyStatus();
+            setPolicySectionOpenV2(false);
             await loadProjects();
             await loadAllProjectsMap();
-            await Promise.all([loadIncomingInterests(), loadSentInterests(), loadActivityMetrics(), loadNeedsHuman(), loadHandoffReady(), loadAgentPolicy()]);
+            await syncPolicyProjectSelection({ requestedProjectId: getSavedPolicyProjectId(), force: true });
+            await Promise.all([loadIncomingInterests(), loadSentInterests(), loadActivityMetrics(), loadNeedsHuman(), loadHandoffReady()]);
         }
 
         function escapeHtml(text) {
@@ -405,26 +435,37 @@
             allProjectsMap = Object.fromEntries((data || []).map(p => [p.id, p]));
         }
 
-        function applyConservativeDefaults() {
-            document.getElementById('policy-project-mode').value = 'both';
-            document.getElementById('policy-patrol-scope').value = 'both';
-            document.getElementById('policy-market-interval').value = '30m';
-            document.getElementById('policy-message-interval').value = '10m';
-            document.getElementById('policy-interest-policy').value = 'draft_then_confirm';
-            document.getElementById('policy-reply-policy').value = 'draft_then_confirm';
-            document.getElementById('policy-notification-mode').value = 'important_only';
-            document.getElementById('policy-priority-tags').value = '';
-            document.getElementById('policy-constraints').value = '';
-            document.getElementById('policy-working-style').value = '';
-            document.getElementById('policy-auto-accept-incoming').checked = false;
-            document.getElementById('policy-require-human-approval-accept').checked = true;
-            document.querySelectorAll('.policy-trigger').forEach(box => {
-                box.checked = ['before_interest', 'before_contact_share', 'before_commitment', 'high_value_conversation'].includes(box.value);
-            });
+        function defaultPolicyFormState() {
+            return {
+                project_mode: 'both',
+                market_patrol_interval: '30m',
+                message_patrol_interval: '10m',
+                patrol_scope: 'both',
+                interest_policy: 'draft_then_confirm',
+                reply_policy: 'draft_then_confirm',
+                handoff_triggers: ['before_interest', 'before_contact_share', 'before_commitment', 'high_value_conversation'],
+                collaborator_preferences: {
+                    priorityTags: [],
+                    constraints: '',
+                    preferredWorkingStyle: '',
+                    automation: {
+                        autoAcceptIncomingInterest: false,
+                        requireHumanApprovalForAcceptingInterest: true
+                    }
+                },
+                notification_mode: 'important_only',
+                is_active: true
+            };
+        }
+
+        function setPolicyStatus(message) {
+            const statusEl = document.getElementById('policy-status');
+            statusEl.dataset.baseMessage = message;
+            statusEl.textContent = message;
         }
 
         function getSelectedTriggers() {
-            return Array.from(document.querySelectorAll('.policy-trigger:checked')).map(el => el.value);
+            return Array.from(document.querySelectorAll('.policy-trigger:checked')).map(el => el.value).sort();
         }
 
         function setSelectedTriggers(values) {
@@ -434,67 +475,8 @@
             });
         }
 
-        async function loadAgentPolicy() {
-            const statusEl = document.getElementById('policy-status');
-            const projectNameEl = document.getElementById('policy-project-name');
-            if (!myProjects.length) {
-                currentPolicyProjectId = null;
-                projectNameEl.textContent = 'Create a project first';
-                statusEl.textContent = 'Create a project to configure its patrol / reply policy.';
-                applyConservativeDefaults();
-                return;
-            }
-
-            const targetProject = myProjects[0];
-            currentPolicyProjectId = targetProject.id;
-            projectNameEl.textContent = targetProject.project_name || targetProject.id;
-
-            const { data, error } = await supabaseClient
-                .from('agent_policies')
-                .select('*')
-                .eq('project_id', currentPolicyProjectId)
-                .maybeSingle();
-
-            if (error) {
-                statusEl.textContent = `Could not load policy: ${error.message}`;
-                applyConservativeDefaults();
-                return;
-            }
-
-            if (!data) {
-                statusEl.textContent = 'No saved policy yet. Configure your onboarding policy below.';
-                applyConservativeDefaults();
-                return;
-            }
-
-            statusEl.textContent = 'Loaded saved policy. These settings control patrol frequency, reply behavior, and when your agent must ask first.';
-            document.getElementById('policy-project-mode').value = data.project_mode || 'both';
-            document.getElementById('policy-patrol-scope').value = data.patrol_scope || 'both';
-            document.getElementById('policy-market-interval').value = data.market_patrol_interval || '30m';
-            document.getElementById('policy-message-interval').value = data.message_patrol_interval || '10m';
-            document.getElementById('policy-interest-policy').value = data.interest_policy || 'draft_then_confirm';
-            document.getElementById('policy-reply-policy').value = data.reply_policy || 'draft_then_confirm';
-            document.getElementById('policy-notification-mode').value = data.notification_mode || 'important_only';
-            const prefs = data.collaborator_preferences || {};
-            const automationPrefs = prefs.automation || {};
-            document.getElementById('policy-priority-tags').value = (prefs.priorityTags || []).join(', ');
-            document.getElementById('policy-constraints').value = prefs.constraints || '';
-            document.getElementById('policy-working-style').value = prefs.preferredWorkingStyle || '';
-            document.getElementById('policy-auto-accept-incoming').checked = Boolean(automationPrefs.autoAcceptIncomingInterest);
-            document.getElementById('policy-require-human-approval-accept').checked = automationPrefs.requireHumanApprovalForAcceptingInterest !== false;
-            setSelectedTriggers(data.handoff_triggers || []);
-        }
-
-        async function saveAgentPolicy() {
-            const statusEl = document.getElementById('policy-status');
-            if (!currentPolicyProjectId) {
-                statusEl.textContent = 'Create a project before saving a Clawborate policy.';
-                return;
-            }
-
-            const payload = {
-                project_id: currentPolicyProjectId,
-                owner_user_id: currentUser.id,
+        function getPolicyFormState() {
+            return {
                 project_mode: document.getElementById('policy-project-mode').value,
                 market_patrol_interval: document.getElementById('policy-market-interval').value,
                 message_patrol_interval: document.getElementById('policy-message-interval').value,
@@ -512,20 +494,243 @@
                     }
                 },
                 notification_mode: document.getElementById('policy-notification-mode').value,
-                is_active: true,
+                is_active: true
+            };
+        }
+
+        function applyPolicyFormState(state) {
+            const prefs = state.collaborator_preferences || {};
+            const automationPrefs = prefs.automation || {};
+            document.getElementById('policy-project-mode').value = state.project_mode || 'both';
+            document.getElementById('policy-patrol-scope').value = state.patrol_scope || 'both';
+            document.getElementById('policy-market-interval').value = state.market_patrol_interval || '30m';
+            document.getElementById('policy-message-interval').value = state.message_patrol_interval || '10m';
+            document.getElementById('policy-interest-policy').value = state.interest_policy || 'draft_then_confirm';
+            document.getElementById('policy-reply-policy').value = state.reply_policy || 'draft_then_confirm';
+            document.getElementById('policy-notification-mode').value = state.notification_mode || 'important_only';
+            document.getElementById('policy-priority-tags').value = (prefs.priorityTags || []).join(', ');
+            document.getElementById('policy-constraints').value = prefs.constraints || '';
+            document.getElementById('policy-working-style').value = prefs.preferredWorkingStyle || '';
+            document.getElementById('policy-auto-accept-incoming').checked = Boolean(automationPrefs.autoAcceptIncomingInterest);
+            document.getElementById('policy-require-human-approval-accept').checked = automationPrefs.requireHumanApprovalForAcceptingInterest !== false;
+            setSelectedTriggers(state.handoff_triggers || []);
+        }
+
+        function applyConservativeDefaults(markClean = false) {
+            applyPolicyFormState(defaultPolicyFormState());
+            if (markClean) {
+                policyFormSnapshot = JSON.stringify(getPolicyFormState());
+            }
+            refreshPolicyDirtyStatus();
+        }
+
+        function useConservativeDefaults() {
+            applyConservativeDefaults(false);
+            setPolicyStatus('Applied conservative defaults locally. Save to store them for this project.');
+            refreshPolicyDirtyStatus();
+        }
+
+        function isPolicyDirty() {
+            if (!currentPolicyProjectId || policyFormSnapshot === null) return false;
+            return JSON.stringify(getPolicyFormState()) !== policyFormSnapshot;
+        }
+
+        function refreshPolicyDirtyStatus() {
+            const statusEl = document.getElementById('policy-status');
+            const baseMessage = statusEl.dataset.baseMessage || statusEl.textContent || '';
+            statusEl.textContent = isPolicyDirty() ? `${baseMessage} Unsaved changes.` : baseMessage;
+        }
+
+        function onPolicyFormMutated(event) {
+            if (event.target.id === 'policy-project-select') return;
+            refreshPolicyDirtyStatus();
+        }
+
+        function buildPolicyPayload(projectId) {
+            return {
+                project_id: projectId,
+                owner_user_id: currentUser.id,
+                ...getPolicyFormState(),
                 updated_at: new Date().toISOString()
             };
+        }
+
+        function getProjectById(projectId) {
+            return myProjects.find(project => project.id === projectId) || null;
+        }
+
+        function renderPolicyProjectSelector() {
+            const select = document.getElementById('policy-project-select');
+            if (!myProjects.length) {
+                select.innerHTML = '<option value="">Create a project first</option>';
+                select.disabled = true;
+                return;
+            }
+
+            select.disabled = false;
+            select.innerHTML = myProjects.map(project => `
+                <option value="${project.id}">${escapeHtml(project.project_name || project.id)}</option>
+            `).join('');
+            if (currentPolicyProjectId) {
+                select.value = currentPolicyProjectId;
+            }
+        }
+
+        function updatePolicyProjectLabel() {
+            const projectNameEl = document.getElementById('policy-project-name');
+            const project = getProjectById(currentPolicyProjectId);
+            projectNameEl.textContent = project ? (project.project_name || project.id) : 'Create a project first';
+        }
+
+        function setPolicySectionOpen(shouldOpen) {
+            const content = document.getElementById('policy-content');
+            const arrow = document.getElementById('policy-toggle-arrow');
+            content.classList.toggle('hidden', !shouldOpen);
+            arrow.textContent = shouldOpen ? '▼' : '▶';
+        }
+
+        function setPolicySectionOpenV2(shouldOpen) {
+            const content = document.getElementById('policy-content');
+            const arrow = document.getElementById('policy-toggle-arrow');
+            content.classList.toggle('hidden', !shouldOpen);
+            if (arrow) {
+                arrow.textContent = shouldOpen ? 'v' : '>';
+            }
+        }
+
+        async function loadAgentPolicy(projectId = currentPolicyProjectId) {
+            if (!myProjects.length) {
+                currentPolicyProjectId = null;
+                setSavedPolicyProjectId('');
+                renderPolicyProjectSelector();
+                updatePolicyProjectLabel();
+                setPolicyStatus('Create a project to configure its patrol / reply policy.');
+                applyConservativeDefaults(true);
+                return;
+            }
+
+            const targetProject = getProjectById(projectId) || getProjectById(getSavedPolicyProjectId()) || myProjects[0];
+            currentPolicyProjectId = targetProject.id;
+            setSavedPolicyProjectId(currentPolicyProjectId);
+            renderPolicyProjectSelector();
+            updatePolicyProjectLabel();
+
+            const { data, error } = await supabaseClient
+                .from('agent_policies')
+                .select('*')
+                .eq('project_id', currentPolicyProjectId)
+                .maybeSingle();
+
+            if (error) {
+                setPolicyStatus(`Could not load policy: ${error.message}`);
+                applyConservativeDefaults(true);
+                return;
+            }
+
+            if (!data) {
+                setPolicyStatus('No saved policy for this project yet. Conservative defaults are loaded locally.');
+                applyConservativeDefaults(true);
+                return;
+            }
+
+            applyPolicyFormState(data);
+            policyFormSnapshot = JSON.stringify(getPolicyFormState());
+            setPolicyStatus('Loaded saved policy. These settings control patrol frequency, reply behavior, and when your agent must ask first.');
+            refreshPolicyDirtyStatus();
+        }
+
+        async function syncPolicyProjectSelection({ requestedProjectId = null, force = false, expand = false, scroll = false } = {}) {
+            if (!myProjects.length) {
+                await loadAgentPolicy(null);
+                return false;
+            }
+
+            const nextProject = getProjectById(requestedProjectId) || getProjectById(currentPolicyProjectId) || getProjectById(getSavedPolicyProjectId()) || myProjects[0];
+            if (!nextProject) {
+                await loadAgentPolicy(null);
+                return false;
+            }
+
+            if (!force && currentPolicyProjectId && nextProject.id !== currentPolicyProjectId && isPolicyDirty()) {
+                const confirmed = confirm('You have unsaved policy changes. Discard them and switch projects?');
+                if (!confirmed) {
+                    renderPolicyProjectSelector();
+                    return false;
+                }
+            }
+
+            if (expand) {
+                setPolicySectionOpenV2(true);
+            }
+
+            await loadAgentPolicy(nextProject.id);
+            if (scroll) {
+                document.getElementById('policy-content').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            return true;
+        }
+
+        async function handlePolicyProjectChange(event) {
+            await syncPolicyProjectSelection({ requestedProjectId: event.target.value });
+        }
+
+        async function focusProjectPolicy(projectId) {
+            await syncPolicyProjectSelection({ requestedProjectId: projectId, expand: true, scroll: true });
+        }
+
+        async function saveAgentPolicy() {
+            if (!currentPolicyProjectId) {
+                setPolicyStatus('Create a project before saving a Clawborate policy.');
+                return;
+            }
+
+            const payload = buildPolicyPayload(currentPolicyProjectId);
 
             const { error } = await supabaseClient
                 .from('agent_policies')
                 .upsert([payload], { onConflict: 'project_id' });
 
             if (error) {
-                statusEl.textContent = `Failed to save policy: ${error.message}`;
+                setPolicyStatus(`Failed to save policy: ${error.message}`);
                 return;
             }
 
-            statusEl.textContent = 'Policy saved. Your patrol / reply / interest behavior is now explicitly configured for this project.';
+            policyFormSnapshot = JSON.stringify(getPolicyFormState());
+            setPolicyStatus('Policy saved. Your patrol / reply / interest behavior is now explicitly configured for this project.');
+            refreshPolicyDirtyStatus();
+        }
+
+        async function applyCurrentPolicyToAllProjects() {
+            if (!myProjects.length) {
+                setPolicyStatus('Create a project before deploying policy to all projects.');
+                return;
+            }
+
+            const count = myProjects.length;
+            if (!confirm(`This will overwrite policy for all ${count} projects. Continue?`)) {
+                return;
+            }
+
+            const payloads = myProjects.map(project => buildPolicyPayload(project.id));
+            const { error } = await supabaseClient
+                .from('agent_policies')
+                .upsert(payloads, { onConflict: 'project_id' });
+
+            if (error) {
+                setPolicyStatus(`Failed to apply policy to all projects: ${error.message}`);
+                return;
+            }
+
+            await loadAgentPolicy(currentPolicyProjectId);
+            policyFormSnapshot = JSON.stringify(getPolicyFormState());
+            setPolicyStatus(`Applied current policy to all ${count} projects.`);
+            refreshPolicyDirtyStatus();
+        }
+
+        async function refreshProjectsAndPolicy(requestedProjectId = currentPolicyProjectId) {
+            await loadProjects();
+            await loadAllProjectsMap();
+            await syncPolicyProjectSelection({ requestedProjectId, force: true });
         }
 
         async function loadActivityMetrics() {
@@ -638,6 +843,8 @@
             }
 
             myProjects = data || [];
+            renderPolicyProjectSelector();
+            updatePolicyProjectLabel();
 
             if (!myProjects.length) {
                 grid.innerHTML = `<p class="text-slate-500 col-span-3 text-center py-8">No folders yet. Click '+ New Folder' to start!</p>`;
@@ -652,6 +859,7 @@
                     <div class="bg-slate-800 border ${isDraft ? 'border-dashed border-slate-600' : 'border-slate-700'} rounded-xl p-6 relative group flex flex-col h-full">
                         <div class="flex justify-between items-start mb-2">
                             <h3 class="text-xl font-bold ${isDraft ? 'text-slate-400' : 'text-white'} mb-2">${escapeHtml(p.project_name)}</h3>
+                            <button onclick="focusProjectPolicy('${p.id}')" class="text-sky-300 hover:text-sky-200 text-xs font-semibold opacity-0 group-hover:opacity-100 transition" title="Edit Policy">Policy</button>
                             <button onclick="editName('${p.id}', ${JSON.stringify(p.project_name)})" class="text-slate-500 hover:text-white opacity-0 group-hover:opacity-100 transition" title="Rename">✏️</button>
                         </div>
                         ${isDraft ? `
@@ -827,8 +1035,7 @@
             if (savedKey) {
                 try {
                     await callAgentGateway('create_project', { project_name: name });
-                    await loadProjects();
-                    await loadAllProjectsMap();
+                    await refreshProjectsAndPolicy(getSavedPolicyProjectId());
                     return;
                 } catch (e) {
                     alert('Agent-key create failed; falling back to human session path.\n\n' + e.message);
@@ -837,8 +1044,7 @@
             const { error } = await supabaseClient.from('projects').insert([{ user_id: currentUser.id, project_name: name }]);
             if (error) alert('Error creating folder: ' + error.message);
             else {
-                await loadProjects();
-                await loadAllProjectsMap();
+                await refreshProjectsAndPolicy(getSavedPolicyProjectId());
             }
         }
 
@@ -848,7 +1054,7 @@
             if (savedKey) {
                 try {
                     await callAgentGateway('delete_project', { project_id: id });
-                    await loadProjects();
+                    await refreshProjectsAndPolicy(id === currentPolicyProjectId ? null : currentPolicyProjectId);
                     await loadIncomingInterests();
                     return;
                 } catch (e) {
@@ -858,7 +1064,7 @@
             const { error } = await supabaseClient.from('projects').delete().eq('id', id);
             if (error) alert('Error deleting: ' + error.message);
             else {
-                await loadProjects();
+                await refreshProjectsAndPolicy(id === currentPolicyProjectId ? null : currentPolicyProjectId);
                 await loadIncomingInterests();
             }
         }
@@ -870,7 +1076,7 @@
             if (savedKey) {
                 try {
                     await callAgentGateway('update_project', { project_id: id, project_name: newName });
-                    await loadProjects();
+                    await refreshProjectsAndPolicy(id);
                     await loadIncomingInterests();
                     return;
                 } catch (e) {
@@ -880,7 +1086,7 @@
             const { error } = await supabaseClient.from('projects').update({ project_name: newName }).eq('id', id);
             if (error) alert('Error renaming: ' + error.message);
             else {
-                await loadProjects();
+                await refreshProjectsAndPolicy(id);
                 await loadIncomingInterests();
             }
         }
@@ -1054,6 +1260,11 @@
                 return;
             }
             await loadSentInterests();
+        }
+
+        function togglePolicySectionV2() {
+            const content = document.getElementById('policy-content');
+            setPolicySectionOpenV2(content.classList.contains('hidden'));
         }
 
         function togglePolicySection() {
