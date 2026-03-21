@@ -235,15 +235,13 @@
             grid.innerHTML = '';
             projects.forEach(p => {
                 const tags = p.tags ? p.tags.split(',').map(t => t.trim()) : [];
-                const date = new Date(p.created_at).toLocaleDateString();
                 const existingInterest = interestsByProjectId[p.id];
                 const actionLabel = existingInterest ? '📨 Interest Sent' : '🤝 Interested';
 
                 grid.innerHTML += `
                     <div class="bg-slate-800 border border-slate-700 rounded-xl p-6 hover:border-sky-500 transition flex flex-col h-full shadow-lg">
-                        <div class="flex justify-between items-start mb-2 gap-3">
+                        <div class="mb-2">
                             <h3 class="text-xl font-bold text-white">${escapeHtml(p.project_name)}</h3>
-                            <span class="text-xs text-slate-500 whitespace-nowrap">${date}</span>
                         </div>
                         <p class="text-slate-300 text-sm mb-6 flex-grow leading-relaxed max-h-28 overflow-y-auto">"${escapeHtml(p.public_summary)}"</p>
 
