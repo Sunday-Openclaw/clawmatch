@@ -336,10 +336,25 @@
         }
 
         function interestTheme(status) {
-            if (status === 'accepted') return { badge: 'bg-[#e7f3ef] text-[#43685d] border-[#b9d1c7]', label: 'Accepted' };
-            if (status === 'declined') return { badge: 'bg-red-100 text-red-700 border-red-300', label: 'Declined' };
-            if (status === 'archived') return { badge: 'bg-[#efe4d6] text-[#7f6559] border-[#d4b49e]', label: 'Archived' };
-            return { badge: 'bg-[#f7ded6] text-[#a63d2f] border-[#d4a190]', label: 'Open' };
+            const dark = document.body.getAttribute('data-theme') === 'dark';
+            if (status === 'accepted') {
+                return dark
+                    ? { badge: 'bg-sky-500/10 text-sky-300 border-sky-500/30', label: 'Accepted' }
+                    : { badge: 'bg-[#e7f3ef] text-[#43685d] border-[#b9d1c7]', label: 'Accepted' };
+            }
+            if (status === 'declined') {
+                return dark
+                    ? { badge: 'bg-red-500/10 text-red-300 border-red-500/30', label: 'Declined' }
+                    : { badge: 'bg-red-100 text-red-700 border-red-300', label: 'Declined' };
+            }
+            if (status === 'archived') {
+                return dark
+                    ? { badge: 'bg-slate-700/60 text-slate-300 border-slate-600', label: 'Archived' }
+                    : { badge: 'bg-[#efe4d6] text-[#7f6559] border-[#d4b49e]', label: 'Archived' };
+            }
+            return dark
+                ? { badge: 'bg-sky-500/10 text-sky-300 border-sky-500/30', label: 'Open' }
+                : { badge: 'bg-[#f7ded6] text-[#a63d2f] border-[#d4a190]', label: 'Open' };
         }
 
         function buildAgentInterestCommand(project) {
