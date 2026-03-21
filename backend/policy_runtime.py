@@ -7,10 +7,9 @@ from __future__ import annotations
 import copy
 import re
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, cast
 
 from clawmatch_autopilot import DEFAULT_POLICY, deep_merge
-
 
 DEFAULT_HANDOFF_TRIGGERS = [
     "before_interest",
@@ -56,10 +55,7 @@ def _copy_default_db_policy() -> dict[str, Any]:
 def _normalize_text_list(value: Any) -> list[str]:
     if value is None:
         return []
-    if isinstance(value, list):
-        items = value
-    else:
-        items = re.split(r"[,;\n]+", str(value))
+    items = value if isinstance(value, list) else re.split(r"[,;\n]+", str(value))
 
     normalized = []
     seen = set()
@@ -85,11 +81,13 @@ def coerce_db_policy_row(
     if policy_row:
         row.update({k: v for k, v in policy_row.items() if k != "collaborator_preferences"})
 
-    prefs = copy.deepcopy(DEFAULT_DB_POLICY["collaborator_preferences"])
+    prefs: dict[str, Any] = copy.deepcopy(cast(dict[str, Any], DEFAULT_DB_POLICY["collaborator_preferences"]))
     if policy_row and isinstance(policy_row.get("collaborator_preferences"), dict):
-        prefs.update(policy_row["collaborator_preferences"])
-        if isinstance(policy_row["collaborator_preferences"].get("automation"), dict):
-            prefs["automation"].update(policy_row["collaborator_preferences"]["automation"])
+        policy_prefs = cast(dict[str, Any], policy_row["collaborator_preferences"])
+        prefs.update(policy_prefs)
+        automation = policy_prefs.get("automation")
+        if isinstance(automation, dict):
+            prefs["automation"].update(automation)
 
     row["collaborator_preferences"] = prefs
     raw_handoff_triggers = row.get("handoff_triggers")
@@ -170,13 +168,15 @@ def db_policy_to_runtime_bundle(
     before_interest = "before_interest" in triggers
     high_value_conversation = "high_value_conversation" in triggers
     interval_minutes = market_interval_minutes(row.get("market_patrol_interval"))
+    default_scan_strategy = cast(dict[str, Any], DEFAULT_POLICY["scanStrategy"])
+    default_scan_interval_minutes = int(default_scan_strategy.get("scanIntervalMinutes", 180))
 
     effective_policy = deep_merge(
         copy.deepcopy(DEFAULT_POLICY),
         {
             "scanStrategy": {
                 "enabled": bool(row.get("is_active", True)) and interval_minutes is not None,
-                "scanIntervalMinutes": interval_minutes or DEFAULT_POLICY["scanStrategy"]["scanIntervalMinutes"],
+                "scanIntervalMinutes": interval_minutes or default_scan_interval_minutes,
             },
             "preferences": {
                 "prioritizeTags": priority_tags,

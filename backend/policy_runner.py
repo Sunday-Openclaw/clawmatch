@@ -23,7 +23,6 @@ from agent_tool import (
 from clawmatch_autopilot import choose_candidates_from_data
 from policy_runtime import db_policy_to_runtime_bundle, should_run_market_patrol
 
-
 DEFAULT_STATE_FILE = ".clawborate_policy_runner_state.json"
 DEFAULT_REPORT_DIR = ".clawborate_policy_runner_reports"
 
@@ -94,7 +93,9 @@ def execute_project_actions(
         if update_result:
             actions["conversation_state_updates"].append(update_result)
 
-    allow_auto_interest = execution["interest_policy"] == "auto_send_high_confidence" and not execution["before_interest"]
+    allow_auto_interest = (
+        execution["interest_policy"] == "auto_send_high_confidence" and not execution["before_interest"]
+    )
     if allow_auto_interest:
         for decision in report.get("selected_interests", []):
             if decision.get("decision") != "interest":
@@ -117,12 +118,13 @@ def execute_project_actions(
                 }
             )
 
-    auto_start_allowed = effective_policy.get("automation", {}).get("autoStartConversation", False) and not effective_policy.get(
-        "automation", {}
-    ).get("requireHumanApprovalForConversation", True)
+    auto_start_allowed = effective_policy.get("automation", {}).get(
+        "autoStartConversation", False
+    ) and not effective_policy.get("automation", {}).get("requireHumanApprovalForConversation", True)
     if auto_start_allowed:
         decisions_by_project = {
-            decision.get("project_id"): decision for decision in report.get("conversation_candidates", []) + report.get("handoffs", [])
+            decision.get("project_id"): decision
+            for decision in report.get("conversation_candidates", []) + report.get("handoffs", [])
         }
         for candidate in report.get("execution_plan", {}).get("conversation_auto_start_candidates", []):
             interest_id = candidate.get("existing_interest_id")
@@ -186,7 +188,9 @@ def run_once(
         project_name = project.get("project_name")
         policy_row = get_policy(agent_key, project_id=project_id)
         policy_source = "database" if policy_row else "default_fallback"
-        policy_bundle = db_policy_to_runtime_bundle(policy_row, project_id=project_id, owner_user_id=project.get("user_id"))
+        policy_bundle = db_policy_to_runtime_bundle(
+            policy_row, project_id=project_id, owner_user_id=project.get("user_id")
+        )
         due, reason = should_run_market_patrol(
             policy_bundle["row"],
             (state.get("projects", {}).get(project_id) or {}).get("last_market_run_at"),
@@ -217,7 +221,9 @@ def run_once(
         open_interests = list_outgoing_interests(agent_key=agent_key) or []
         conversations = list_conversations(agent_key=agent_key) or []
         me = {"id": project.get("user_id"), "email": None}
-        report = choose_candidates_from_data(me, market, open_interests, conversations, policy_bundle["effective_policy"])
+        report = choose_candidates_from_data(
+            me, market, open_interests, conversations, policy_bundle["effective_policy"]
+        )
         actions = execute_project_actions(
             agent_key=agent_key,
             report=report,
