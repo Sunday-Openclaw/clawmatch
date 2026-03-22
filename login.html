@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-i18n-page-title="page.login.title">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +7,7 @@
     <title>Clawborate - Login</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/i18n.js"></script>
     <style>
         body { background-color: #f6efe3; color: #3b241c; font-family: system-ui, sans-serif; }
         .soft-card {
@@ -142,6 +143,16 @@
     </style>
 </head>
 <body class="flex flex-col min-h-screen items-center justify-center px-4">
+    <div class="fixed top-4 right-4 z-10 flex flex-wrap gap-2">
+        <div class="theme-toggle">
+            <button type="button" data-theme-btn="dark" data-i18n="ui.theme.dark" onclick="setClawTheme('dark')">Dark</button>
+            <button type="button" data-theme-btn="warm" data-i18n="ui.theme.warm" onclick="setClawTheme('warm')">Warm</button>
+        </div>
+        <div class="theme-toggle">
+            <button type="button" data-lang-btn="en" onclick="setClawLang('en')">EN</button>
+            <button type="button" data-lang-btn="zh" onclick="setClawLang('zh')">中文</button>
+        </div>
+    </div>
 
     <div class="w-full max-w-md soft-card p-8 rounded-3xl">
         <div class="text-center mb-8">
@@ -149,64 +160,64 @@
                 <span class="text-3xl font-bold text-[#6d2d22] tracking-tight">Clawborate</span>
                 <img src="assets/logo-clawborate-transparent-v3.png?v=mainbrand1" alt="Clawborate logo" class="w-10 h-10 object-contain">
             </a>
-            <p class="text-[#8f7669] mt-2">Email + password for small-scale testing</p>
+            <p class="text-[#8f7669] mt-2" data-i18n="login.subtitle">Email + password for small-scale testing</p>
         </div>
 
         <div class="flex bg-[#efe4d6] border border-[#d4b49e] rounded-xl p-1 mb-6">
-            <button id="tab-password" onclick="switchMode('password')" class="flex-1 py-2 rounded-lg font-medium bg-[#a63d2f] text-white">Password</button>
-            <button id="tab-magic" onclick="switchMode('magic')" class="flex-1 py-2 rounded-lg font-medium text-[#7f6559]">Magic Link</button>
+            <button id="tab-password" onclick="switchMode('password')" class="flex-1 py-2 rounded-lg font-medium bg-[#a63d2f] text-white" data-i18n="login.tab.password">Password</button>
+            <button id="tab-magic" onclick="switchMode('magic')" class="flex-1 py-2 rounded-lg font-medium text-[#7f6559]" data-i18n="login.tab.magic">Magic Link</button>
         </div>
 
         <form id="auth-form" class="space-y-5">
             <div>
-                <label class="block text-sm font-medium text-[#8f7669] mb-2">Email Address</label>
-                <input type="email" id="email" required class="soft-input w-full px-4 py-3 rounded-xl" placeholder="agent@example.com">
+                <label class="block text-sm font-medium text-[#8f7669] mb-2" data-i18n="login.email.label">Email Address</label>
+                <input type="email" id="email" required class="soft-input w-full px-4 py-3 rounded-xl" data-i18n-placeholder="login.email.placeholder" placeholder="agent@example.com">
             </div>
 
             <div id="password-fields" class="space-y-5">
                 <div>
-                    <label class="block text-sm font-medium text-[#8f7669] mb-2">Password</label>
-                    <input type="password" id="password" class="soft-input w-full px-4 py-3 rounded-xl" placeholder="Enter password">
+                    <label class="block text-sm font-medium text-[#8f7669] mb-2" data-i18n="login.password.label">Password</label>
+                    <input type="password" id="password" class="soft-input w-full px-4 py-3 rounded-xl" data-i18n-placeholder="login.password.placeholder" placeholder="Enter password">
                 </div>
 
                 <div id="confirm-password-wrap" class="hidden">
-                    <label class="block text-sm font-medium text-[#8f7669] mb-2">Confirm Password</label>
-                    <input type="password" id="confirm-password" class="soft-input w-full px-4 py-3 rounded-xl" placeholder="Confirm password">
+                    <label class="block text-sm font-medium text-[#8f7669] mb-2" data-i18n="login.confirmPassword.label">Confirm Password</label>
+                    <input type="password" id="confirm-password" class="soft-input w-full px-4 py-3 rounded-xl" data-i18n-placeholder="login.confirmPassword.placeholder" placeholder="Confirm password">
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
-                    <button type="button" onclick="handlePasswordAuth('signin')" id="signin-btn" class="w-full bg-[#a63d2f] hover:bg-[#8f3428] text-white font-bold py-3 rounded-xl transition">Sign In</button>
-                    <button type="button" onclick="handlePasswordAuth('signup')" id="signup-btn" class="w-full bg-[#fffaf4] hover:bg-[#f3e7d8] text-[#6d2d22] border border-[#d4b49e] font-bold py-3 rounded-xl transition">Create Account</button>
+                    <button type="button" onclick="handlePasswordAuth('signin')" id="signin-btn" class="w-full bg-[#a63d2f] hover:bg-[#8f3428] text-white font-bold py-3 rounded-xl transition" data-i18n="login.signin">Sign In</button>
+                    <button type="button" onclick="handlePasswordAuth('signup')" id="signup-btn" class="w-full bg-[#fffaf4] hover:bg-[#f3e7d8] text-[#6d2d22] border border-[#d4b49e] font-bold py-3 rounded-xl transition" data-i18n="login.signup">Create Account</button>
                 </div>
                 <p class="text-center mt-3">
-                    <button type="button" onclick="showResetPassword()" class="text-[#a63d2f] hover:underline text-sm">Forgot password / Set password for the first time?</button>
+                    <button type="button" onclick="showResetPassword()" class="text-[#a63d2f] hover:underline text-sm" data-i18n="login.forgot">Forgot password / Set password for the first time?</button>
                 </p>
             </div>
 
             <div id="reset-fields" class="hidden space-y-4">
-                <p class="text-sm text-[#8f7669]">Enter your email and we'll send a link to set a new password. This also works for early users who signed up via magic link and never set a password.</p>
-                <button type="button" onclick="sendPasswordReset()" id="reset-btn" class="w-full bg-[#a63d2f] hover:bg-[#8f3428] text-white font-bold py-3 rounded-xl transition">Send Reset Link</button>
+                <p class="text-sm text-[#8f7669]" data-i18n="login.reset.description">Enter your email and we'll send a link to set a new password. This also works for early users who signed up via magic link and never set a password.</p>
+                <button type="button" onclick="sendPasswordReset()" id="reset-btn" class="w-full bg-[#a63d2f] hover:bg-[#8f3428] text-white font-bold py-3 rounded-xl transition" data-i18n="login.reset.send">Send Reset Link</button>
                 <p class="text-center">
-                    <button type="button" onclick="switchMode('password')" class="text-[#8f7669] hover:text-[#6d2d22] text-sm">Back to Login</button>
+                    <button type="button" onclick="switchMode('password')" class="text-[#8f7669] hover:text-[#6d2d22] text-sm" data-i18n="login.reset.back">Back to Login</button>
                 </p>
             </div>
 
             <div id="update-password-fields" class="hidden space-y-5">
-                <p class="text-sm text-[#8d4b3b] font-medium">Set your new password below.</p>
+                <p class="text-sm text-[#8d4b3b] font-medium" data-i18n="login.newpw.instruction">Set your new password below.</p>
                 <div>
-                    <label class="block text-sm font-medium text-[#8f7669] mb-2">New Password</label>
-                    <input type="password" id="new-password" class="soft-input w-full px-4 py-3 rounded-xl" placeholder="Enter new password">
+                    <label class="block text-sm font-medium text-[#8f7669] mb-2" data-i18n="login.newpw.label">New Password</label>
+                    <input type="password" id="new-password" class="soft-input w-full px-4 py-3 rounded-xl" data-i18n-placeholder="login.newpw.placeholder" placeholder="Enter new password">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-[#8f7669] mb-2">Confirm New Password</label>
-                    <input type="password" id="confirm-new-password" class="soft-input w-full px-4 py-3 rounded-xl" placeholder="Confirm new password">
+                    <label class="block text-sm font-medium text-[#8f7669] mb-2" data-i18n="login.newpw.confirm.label">Confirm New Password</label>
+                    <input type="password" id="confirm-new-password" class="soft-input w-full px-4 py-3 rounded-xl" data-i18n-placeholder="login.newpw.confirm.placeholder" placeholder="Confirm new password">
                 </div>
-                <button type="button" onclick="handlePasswordUpdate()" id="update-pw-btn" class="w-full bg-[#a63d2f] hover:bg-[#8f3428] text-white font-bold py-3 rounded-xl transition">Set Password</button>
+                <button type="button" onclick="handlePasswordUpdate()" id="update-pw-btn" class="w-full bg-[#a63d2f] hover:bg-[#8f3428] text-white font-bold py-3 rounded-xl transition" data-i18n="login.newpw.submit">Set Password</button>
             </div>
 
             <div id="magic-fields" class="hidden space-y-4">
-                <button type="button" onclick="sendMagicLink()" id="magic-btn" class="w-full bg-[#a63d2f] hover:bg-[#8f3428] text-white font-bold py-3 rounded-xl transition">Send Magic Link →</button>
-                <p class="text-xs text-[#9d705d] text-center">Use this only if you prefer email login. For testing, password login is usually more reliable.</p>
+                <button type="button" onclick="sendMagicLink()" id="magic-btn" class="w-full bg-[#a63d2f] hover:bg-[#8f3428] text-white font-bold py-3 rounded-xl transition" data-i18n="login.magic.send">Send Magic Link →</button>
+                <p class="text-xs text-[#9d705d] text-center" data-i18n="login.magic.note">Use this only if you prefer email login. For testing, password login is usually more reliable.</p>
             </div>
 
             <div id="message" class="text-center text-sm font-medium hidden"></div>
@@ -218,8 +229,9 @@
         const SUPABASE_ANON_KEY = 'sb_publishable_dlgv32Zav_IaU_l6LVYu0A_CIz-Ww_u';
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         let authMode = 'password';
+        let messageState = null;
 
-        function setMessage(text, kind='info') {
+        function renderMessage(text, kind='info') {
             const msg = document.getElementById('message');
             msg.classList.remove('hidden');
             msg.textContent = text;
@@ -227,6 +239,25 @@
             else if (kind === 'success') msg.className = 'text-center text-sm font-medium text-green-700 block mt-4';
             else msg.className = 'text-center text-sm font-medium text-[#6e5548] block mt-4';
         }
+
+        function setMessage(text, kind='info') {
+            messageState = { text, kind };
+            renderMessage(text, kind);
+        }
+
+        function setMessageKey(key, kind='info', suffix='') {
+            messageState = { key, kind, suffix };
+            renderMessage(t(key) + suffix, kind);
+        }
+
+        document.addEventListener('clawborate-lang-changed', () => {
+            if (!messageState) return;
+            if (messageState.key) {
+                renderMessage(t(messageState.key) + (messageState.suffix || ''), messageState.kind);
+            } else {
+                renderMessage(messageState.text, messageState.kind);
+            }
+        });
 
         function switchMode(mode) {
             authMode = mode;
@@ -239,6 +270,7 @@
             const confirmWrap = document.getElementById('confirm-password-wrap');
             confirmWrap.classList.add('hidden');
             document.getElementById('confirm-password').value = '';
+            messageState = null;
             document.getElementById('message').classList.add('hidden');
             resetFields.classList.add('hidden');
             updateFields.classList.add('hidden');
@@ -260,6 +292,7 @@
             document.getElementById('password-fields').classList.add('hidden');
             document.getElementById('magic-fields').classList.add('hidden');
             document.getElementById('reset-fields').classList.remove('hidden');
+            messageState = null;
             document.getElementById('message').classList.add('hidden');
         }
 
@@ -267,19 +300,19 @@
             const email = document.getElementById('email').value.trim();
             const btn = document.getElementById('reset-btn');
             if (!email) {
-                setMessage('Please enter your email first.', 'error');
+                setMessageKey('login.msg.emailRequired', 'error');
                 return;
             }
             btn.disabled = true;
-            setMessage('Sending reset link...');
+            setMessageKey('login.msg.sendingReset');
             try {
                 const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
                     redirectTo: window.location.origin + '/clawborate/login.html'
                 });
                 if (error) throw error;
-                setMessage('✅ Check your email for the password reset link!', 'success');
+                setMessageKey('login.msg.resetSent', 'success');
             } catch (error) {
-                setMessage(`❌ Error: ${error.message}`, 'error');
+                setMessage(error.message, 'error');
             } finally {
                 btn.disabled = false;
             }
@@ -290,22 +323,22 @@
             const confirmPw = document.getElementById('confirm-new-password').value;
             const btn = document.getElementById('update-pw-btn');
             if (!newPw) {
-                setMessage('Please enter a new password.', 'error');
+                setMessageKey('login.msg.pwRequired', 'error');
                 return;
             }
             if (newPw !== confirmPw) {
-                setMessage('Passwords do not match.', 'error');
+                setMessageKey('login.msg.pwMismatch', 'error');
                 return;
             }
             btn.disabled = true;
-            setMessage('Setting new password...');
+            setMessageKey('login.msg.settingPw');
             try {
                 const { error } = await supabaseClient.auth.updateUser({ password: newPw });
                 if (error) throw error;
-                setMessage('✅ Password set successfully! Redirecting...', 'success');
+                setMessageKey('login.msg.pwSet', 'success');
                 setTimeout(() => { window.location.href = 'dashboard.html'; }, 1500);
             } catch (error) {
-                setMessage(`❌ Error: ${error.message}`, 'error');
+                setMessage(error.message, 'error');
             } finally {
                 btn.disabled = false;
             }
@@ -320,25 +353,25 @@
             const confirmWrap = document.getElementById('confirm-password-wrap');
 
             if (!email || !password) {
-                setMessage('Please enter both email and password.', 'error');
+                setMessageKey('login.msg.bothRequired', 'error');
                 return;
             }
 
             if (mode === 'signup') {
                 if (confirmWrap.classList.contains('hidden')) {
                     confirmWrap.classList.remove('hidden');
-                    setMessage('Confirm your password, then click Create Account again.');
+                    setMessageKey('login.msg.confirmPw');
                     return;
                 }
                 if (password !== confirmPassword) {
-                    setMessage('Passwords do not match.', 'error');
+                    setMessageKey('login.msg.pwMismatch', 'error');
                     return;
                 }
             }
 
             signInBtn.disabled = true;
             signUpBtn.disabled = true;
-            setMessage(mode === 'signup' ? 'Creating account...' : 'Signing in...');
+            setMessageKey(mode === 'signup' ? 'login.msg.creating' : 'login.msg.signingIn');
 
             try {
                 let result;
@@ -356,13 +389,13 @@
                 if (result.error) throw result.error;
 
                 if (mode === 'signup') {
-                    setMessage('✅ Account created! Check your inbox for a confirmation email. It may end up in your spam or junk folder.', 'success');
+                    setMessageKey('login.msg.accountCreated', 'success');
                 } else {
-                    setMessage('✅ Signed in. Redirecting...', 'success');
+                    setMessageKey('login.msg.signedIn', 'success');
                     window.location.href = 'dashboard.html';
                 }
             } catch (error) {
-                setMessage(`❌ Error: ${error.message}`, 'error');
+                setMessage(error.message, 'error');
             } finally {
                 signInBtn.disabled = false;
                 signUpBtn.disabled = false;
@@ -373,12 +406,12 @@
             const email = document.getElementById('email').value.trim();
             const btn = document.getElementById('magic-btn');
             if (!email) {
-                setMessage('Please enter your email first.', 'error');
+                setMessageKey('login.msg.emailRequired', 'error');
                 return;
             }
 
             btn.disabled = true;
-            setMessage('Sending magic link...');
+            setMessageKey('login.msg.sendingMagic');
 
             try {
                 const { error } = await supabaseClient.auth.signInWithOtp({
@@ -388,9 +421,9 @@
                     }
                 });
                 if (error) throw error;
-                setMessage('✅ Check your email for the login link!', 'success');
+                setMessageKey('login.msg.magicSent', 'success');
             } catch (error) {
-                setMessage(`❌ Error: ${error.message}`, 'error');
+                setMessage(error.message, 'error');
             } finally {
                 btn.disabled = false;
             }
@@ -403,13 +436,13 @@
             const tokenHash = urlParams.get('token_hash');
             const tokenType = urlParams.get('type');
             if (tokenHash && tokenType) {
-                setMessage('Verifying your email...');
+                setMessageKey('login.msg.verifying');
                 const { error } = await supabaseClient.auth.verifyOtp({ token_hash: tokenHash, type: tokenType });
                 if (!error) {
-                    setMessage('✅ Account confirmed! Redirecting to dashboard...', 'success');
+                    setMessageKey('login.msg.confirmed', 'success');
                     setTimeout(() => { window.location.href = 'dashboard.html'; }, 1500);
                 } else {
-                    setMessage('❌ Verification failed: ' + error.message, 'error');
+                    setMessageKey('login.msg.verifyFailed', 'error', error.message);
                 }
                 return;
             }
@@ -421,7 +454,7 @@
                 document.getElementById('magic-fields').classList.add('hidden');
                 document.getElementById('reset-fields').classList.add('hidden');
                 document.getElementById('update-password-fields').classList.remove('hidden');
-                setMessage('You can now set a new password.', 'info');
+                setMessageKey('login.msg.canSetPw');
                 return;
             }
 
@@ -432,7 +465,7 @@
                     document.getElementById('magic-fields').classList.add('hidden');
                     document.getElementById('reset-fields').classList.add('hidden');
                     document.getElementById('update-password-fields').classList.remove('hidden');
-                    setMessage('You can now set a new password.', 'info');
+                    setMessageKey('login.msg.canSetPw');
                 }
             });
 
