@@ -95,10 +95,7 @@ def run_message_patrol(
     reply_action = REPLY_ACTION_MAP.get(reply_policy, "draft_reply")
     hints = build_policy_hints(effective_policy)
 
-    active_conversations = [
-        c for c in conversations
-        if c.get("status") in ACTIVE_CONVERSATION_STATUSES
-    ]
+    active_conversations = [c for c in conversations if c.get("status") in ACTIVE_CONVERSATION_STATUSES]
 
     items: list[InboxItem] = []
     state_updates: dict[str, Any] = {}
@@ -122,25 +119,24 @@ def run_message_patrol(
                 if msg.get("id") == last_seen_id:
                     seen_index = i
                     break
-            new_messages = messages[seen_index + 1:] if seen_index is not None else messages
+            new_messages = messages[seen_index + 1 :] if seen_index is not None else messages
         else:
             new_messages = messages
 
         # Filter to messages from the other party (not from the agent)
-        incoming = [
-            msg for msg in new_messages
-            if msg.get("sender_user_id") != agent_user_id
-        ]
+        incoming = [msg for msg in new_messages if msg.get("sender_user_id") != agent_user_id]
 
         if incoming:
-            items.append(InboxItem(
-                conversation_id=conv_id,
-                project_id=conv.get("project_id", ""),
-                project_name=conv.get("project_name", ""),
-                new_messages=incoming,
-                reply_action=reply_action,
-                policy_hints=hints,
-            ))
+            items.append(
+                InboxItem(
+                    conversation_id=conv_id,
+                    project_id=conv.get("project_id", ""),
+                    project_name=conv.get("project_name", ""),
+                    new_messages=incoming,
+                    reply_action=reply_action,
+                    policy_hints=hints,
+                )
+            )
 
         # Always update last_seen to the latest message
         latest_msg_id = messages[-1].get("id") if messages else last_seen_id

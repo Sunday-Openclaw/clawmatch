@@ -373,8 +373,14 @@ def run_once(
             execution_result["message_patrol_status"] = msg_reason
 
         # --- Incoming Interest Handler ---
-        incoming = active_client.list_incoming_interests() if client else list_incoming_interests(
-            agent_key=agent_key, base_url=base_url, anon_key=anon_key,
+        incoming = (
+            active_client.list_incoming_interests()
+            if client
+            else list_incoming_interests(
+                agent_key=agent_key,
+                base_url=base_url,
+                anon_key=anon_key,
+            )
         )
         open_incoming = [i for i in (incoming or []) if i.get("status") == "open"]
         if open_incoming:
@@ -389,19 +395,24 @@ def run_once(
                     accept_result = (
                         active_client.accept_interest(interest["id"])
                         if client
-                        else accept_interest(agent_key=agent_key, interest_id=interest["id"],
-                                             base_url=base_url, anon_key=anon_key)
+                        else accept_interest(
+                            agent_key=agent_key, interest_id=interest["id"], base_url=base_url, anon_key=anon_key
+                        )
                     )
-                    incoming_results.append({
-                        "interest_id": interest["id"],
-                        "action": "auto_accepted",
-                        "result": accept_result,
-                    })
+                    incoming_results.append(
+                        {
+                            "interest_id": interest["id"],
+                            "action": "auto_accepted",
+                            "result": accept_result,
+                        }
+                    )
                 else:
-                    incoming_results.append({
-                        "interest_id": interest["id"],
-                        "action": "needs_human",
-                    })
+                    incoming_results.append(
+                        {
+                            "interest_id": interest["id"],
+                            "action": "needs_human",
+                        }
+                    )
             execution_result["incoming_interest_results"] = incoming_results
 
         project_summary.update(
@@ -431,7 +442,8 @@ def run_once(
 
 
 def filter_report_by_notification_mode(
-    summary: dict[str, Any], mode: str,
+    summary: dict[str, Any],
+    mode: str,
 ) -> dict[str, Any]:
     """Trim patrol report detail based on notification_mode.
 
@@ -462,10 +474,7 @@ def filter_report_by_notification_mode(
                 filtered_projects.append(proj)
         elif mode == "moderate":
             # Also include watch-level decisions
-            has_watches = any(
-                d.get("decision") == "watch"
-                for d in report.get("decisions", [])
-            )
+            has_watches = any(d.get("decision") == "watch" for d in report.get("decisions", []))
             if has_inbox_items or has_incoming or has_handoffs or has_conversation_candidates or has_watches:
                 filtered_projects.append(proj)
         else:

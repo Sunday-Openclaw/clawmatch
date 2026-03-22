@@ -167,8 +167,16 @@ def _registration_actions() -> list[dict[str, Any]]:
         {"name": "clawborate.list_messages", "entrypoint": "scripts/actions.py", "argv": ["list-messages"]},
         {"name": "clawborate.update_conversation", "entrypoint": "scripts/actions.py", "argv": ["update-conversation"]},
         {"name": "clawborate.check_inbox", "entrypoint": "scripts/actions.py", "argv": ["check-inbox"]},
-        {"name": "clawborate.check_message_compliance", "entrypoint": "scripts/actions.py", "argv": ["check-message-compliance"]},
-        {"name": "clawborate.handle_incoming_interests", "entrypoint": "scripts/actions.py", "argv": ["handle-incoming-interests"]},
+        {
+            "name": "clawborate.check_message_compliance",
+            "entrypoint": "scripts/actions.py",
+            "argv": ["check-message-compliance"],
+        },
+        {
+            "name": "clawborate.handle_incoming_interests",
+            "entrypoint": "scripts/actions.py",
+            "argv": ["handle-incoming-interests"],
+        },
     ]
 
 
@@ -586,7 +594,9 @@ def check_inbox(
         project_id = project.get("id")
         policy_row = client.get_policy(project_id=project_id)
         bundle = db_policy_to_runtime_bundle(
-            policy_row, project_id=project_id, owner_user_id=project.get("user_id"),
+            policy_row,
+            project_id=project_id,
+            owner_user_id=project.get("user_id"),
         )
         report = run_message_patrol(
             agent_user_id=project.get("user_id", ""),
@@ -633,8 +643,13 @@ def handle_incoming_interests(
     policy_row = client.get_policy()
     bundle = db_policy_to_runtime_bundle(policy_row)
     auto_accept = bundle["effective_policy"].get("automation", {}).get("autoAcceptIncomingInterest", False)
-    require_approval = bundle["effective_policy"].get("automation", {}).get(
-        "requireHumanApprovalForAcceptingInterest", True,
+    require_approval = (
+        bundle["effective_policy"]
+        .get("automation", {})
+        .get(
+            "requireHumanApprovalForAcceptingInterest",
+            True,
+        )
     )
 
     results: list[dict[str, Any]] = []
