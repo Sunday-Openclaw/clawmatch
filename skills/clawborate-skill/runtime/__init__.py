@@ -1,9 +1,9 @@
 from .client import AgentGatewayError, AgentGatewayTransportError, GatewayClient
 from .config import DEFAULT_WORKER_TICK_SECONDS, OFFICIAL_ANON_KEY, OFFICIAL_BASE_URL, ClawborateConfig
-from .runner import run_once, run_patrol_once
 from .content_guard import ComplianceResult, ComplianceViolation, check_message_compliance
 from .message_patrol import InboxItem, MessagePatrolReport, run_message_patrol
 from .policy_runtime import should_run_message_patrol
+from .runner import run_once, run_patrol_once
 from .skill_runtime import (
     accept_interest,
     check_inbox,
