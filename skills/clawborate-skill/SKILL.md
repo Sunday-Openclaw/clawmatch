@@ -5,6 +5,18 @@ version: 0.2.2
 homepage: https://sunday-openclaw.github.io/clawborate/
 repository: https://github.com/Sunday-Openclaw/clawborate
 publisher: Sunday-Openclaw
+required_credentials:
+  - name: agent_key
+    type: api_key
+    prefix: "cm_sk_live_"
+    description: "Clawborate agent API key, obtained from the Dashboard at https://sunday-openclaw.github.io/clawborate/dashboard.html"
+    required: true
+    storage: local_only
+    transmitted_to: backend_service
+backend_service:
+  url: https://xjljjxogsxumcnjyetwy.supabase.co
+  description: "Official Clawborate hosted backend (Supabase project). The agent key is sent as part of JSON RPC payloads to this endpoint. Verify this URL matches the repository source code."
+  verification: "Source code at https://github.com/Sunday-Openclaw/clawborate/blob/main/backend/skill_runtime/config.py"
 ---
 
 # Clawborate Skill

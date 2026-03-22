@@ -113,6 +113,18 @@ version: {version}
 homepage: https://sunday-openclaw.github.io/clawborate/
 repository: https://github.com/Sunday-Openclaw/clawborate
 publisher: Sunday-Openclaw
+required_credentials:
+  - name: agent_key
+    type: api_key
+    prefix: "cm_sk_live_"
+    description: "Clawborate agent API key, obtained from the Dashboard at https://sunday-openclaw.github.io/clawborate/dashboard.html"
+    required: true
+    storage: local_only
+    transmitted_to: backend_service
+backend_service:
+  url: https://xjljjxogsxumcnjyetwy.supabase.co
+  description: "Official Clawborate hosted backend (Supabase project). The agent key is sent as part of JSON RPC payloads to this endpoint. Verify this URL matches the repository source code."
+  verification: "Source code at https://github.com/Sunday-Openclaw/clawborate/blob/main/backend/skill_runtime/config.py"
 ---
 
 # Clawborate Skill
@@ -233,6 +245,15 @@ def write_openai_yaml(icon_small: str, icon_large: str) -> None:
   repository: "https://github.com/Sunday-Openclaw/clawborate"
   publisher: "Sunday-Openclaw"
   default_prompt: "Use $clawborate-skill to install or operate the official Clawborate runtime, validate an agent key, manage Clawborate projects, inspect market opportunities, handle interests and conversations, run a patrol, inspect skill health, or fetch the latest patrol report."
+  required_credentials:
+    - name: "agent_key"
+      type: "api_key"
+      prefix: "cm_sk_live_"
+      required: true
+      storage: "local_only"
+  backend_service:
+    url: "https://xjljjxogsxumcnjyetwy.supabase.co"
+    description: "Official Clawborate hosted backend (Supabase project)"
 """
     OPENAI_YAML.write_text(content, encoding="utf-8")
 
@@ -250,6 +271,22 @@ def write_manifest(
         "homepage": "https://sunday-openclaw.github.io/clawborate/",
         "repository": "https://github.com/Sunday-Openclaw/clawborate",
         "publisher": "Sunday-Openclaw",
+        "required_credentials": [
+            {
+                "name": "agent_key",
+                "type": "api_key",
+                "prefix": "cm_sk_live_",
+                "description": "Clawborate agent API key, obtained from the Dashboard",
+                "required": True,
+                "storage": "local_only",
+                "transmitted_to": "backend_service",
+            }
+        ],
+        "backend_service": {
+            "url": "https://xjljjxogsxumcnjyetwy.supabase.co",
+            "description": "Official Clawborate hosted backend (Supabase project)",
+            "verification": "https://github.com/Sunday-Openclaw/clawborate/blob/main/backend/skill_runtime/config.py",
+        },
         "icon_profile": icon_profile,
         "built_at": utc_now_iso(),
         "runtime_files": runtime_files,

@@ -4,8 +4,24 @@
   "homepage": "https://sunday-openclaw.github.io/clawborate/",
   "repository": "https://github.com/Sunday-Openclaw/clawborate",
   "publisher": "Sunday-Openclaw",
+  "required_credentials": [
+    {
+      "name": "agent_key",
+      "type": "api_key",
+      "prefix": "cm_sk_live_",
+      "description": "Clawborate agent API key, obtained from the Dashboard",
+      "required": true,
+      "storage": "local_only",
+      "transmitted_to": "backend_service"
+    }
+  ],
+  "backend_service": {
+    "url": "https://xjljjxogsxumcnjyetwy.supabase.co",
+    "description": "Official Clawborate hosted backend (Supabase project)",
+    "verification": "https://github.com/Sunday-Openclaw/clawborate/blob/main/backend/skill_runtime/config.py"
+  },
   "icon_profile": "default",
-  "built_at": "2026-03-22T03:41:34.222338+00:00",
+  "built_at": "2026-03-22T03:46:38.838584+00:00",
   "runtime_files": [
     "__init__.py",
     "autopilot_core.py",
