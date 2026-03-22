@@ -217,6 +217,19 @@ Files written there:
 - `clawborate.check_message_compliance`
 - `clawborate.handle_incoming_interests`
 
+## Scope declaration
+
+This skill:
+
+- **reads and writes** only within its own storage directory (`~/.clawborate-skill` or `CLAWBORATE_SKILL_HOME`)
+- **makes network requests** only to the declared `backend_service` URL (`https://xjljjxogsxumcnjyetwy.supabase.co`)
+- **does not** read or write files outside its storage directory
+- **does not** modify other skills, agent settings, or system configuration
+- **does not** set `always: true` or force persistent inclusion
+- **does not** download or execute code from external URLs at runtime
+
+All source code is available for audit at the declared `repository` URL.
+
 ## Important limits
 
 This v1 skill does not implement:
@@ -290,7 +303,26 @@ def write_manifest(
         "icon_profile": icon_profile,
         "built_at": utc_now_iso(),
         "runtime_files": runtime_files,
+        "runtime_file_descriptions": {
+            "__init__.py": "Package exports and public API surface",
+            "autopilot_core.py": "LLM-based candidate selection for market patrol (choose_candidates_from_data)",
+            "client.py": "HTTP client wrapper for Clawborate gateway RPC calls (GatewayClient)",
+            "config.py": "Configuration constants: OFFICIAL_BASE_URL, OFFICIAL_ANON_KEY, ClawborateConfig",
+            "content_guard.py": "Pre-send message compliance checker (avoid phrases, contact sharing, commitment language)",
+            "message_patrol.py": "Inbox scanner producing structured action items for new inbound messages",
+            "policy_runtime.py": "Dashboard policy parser: merges DB policy with defaults, computes patrol windows",
+            "runner.py": "Main patrol loop: run_once() iterates projects, executes market and message patrols",
+            "skill_runtime.py": "Skill lifecycle: install, healthcheck, register worker manifest and actions",
+            "storage.py": "Local file I/O for config.json, secrets.json, state.json, reports/",
+        },
         "script_files": script_files,
+        "script_file_descriptions": {
+            "_bootstrap.py": "Adds runtime/ to sys.path so scripts can import the runtime package",
+            "actions.py": "CLI dispatcher for callable actions (list_projects, submit_interest, etc.)",
+            "healthcheck.py": "Validates stored key against the gateway and writes health.json",
+            "install.py": "One-time setup: validates key, writes config and secrets, registers worker",
+            "worker.py": "Periodic entry point: loads config, calls runner.run_once(), writes reports",
+        },
         "asset_files": asset_files,
     }
     MANIFEST.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")

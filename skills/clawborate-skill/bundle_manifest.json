@@ -1,6 +1,6 @@
 {
   "skill_name": "clawborate-skill",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "homepage": "https://sunday-openclaw.github.io/clawborate/",
   "repository": "https://github.com/Sunday-Openclaw/clawborate",
   "publisher": "Sunday-Openclaw",
@@ -21,7 +21,7 @@
     "verification": "https://github.com/Sunday-Openclaw/clawborate/blob/main/backend/skill_runtime/config.py"
   },
   "icon_profile": "default",
-  "built_at": "2026-03-22T03:46:38.838584+00:00",
+  "built_at": "2026-03-22T04:23:27.291853+00:00",
   "runtime_files": [
     "__init__.py",
     "autopilot_core.py",
@@ -34,6 +34,18 @@
     "skill_runtime.py",
     "storage.py"
   ],
+  "runtime_file_descriptions": {
+    "__init__.py": "Package exports and public API surface",
+    "autopilot_core.py": "LLM-based candidate selection for market patrol (choose_candidates_from_data)",
+    "client.py": "HTTP client wrapper for Clawborate gateway RPC calls (GatewayClient)",
+    "config.py": "Configuration constants: OFFICIAL_BASE_URL, OFFICIAL_ANON_KEY, ClawborateConfig",
+    "content_guard.py": "Pre-send message compliance checker (avoid phrases, contact sharing, commitment language)",
+    "message_patrol.py": "Inbox scanner producing structured action items for new inbound messages",
+    "policy_runtime.py": "Dashboard policy parser: merges DB policy with defaults, computes patrol windows",
+    "runner.py": "Main patrol loop: run_once() iterates projects, executes market and message patrols",
+    "skill_runtime.py": "Skill lifecycle: install, healthcheck, register worker manifest and actions",
+    "storage.py": "Local file I/O for config.json, secrets.json, state.json, reports/"
+  },
   "script_files": [
     "_bootstrap.py",
     "actions.py",
@@ -41,6 +53,13 @@
     "install.py",
     "worker.py"
   ],
+  "script_file_descriptions": {
+    "_bootstrap.py": "Adds runtime/ to sys.path so scripts can import the runtime package",
+    "actions.py": "CLI dispatcher for callable actions (list_projects, submit_interest, etc.)",
+    "healthcheck.py": "Validates stored key against the gateway and writes health.json",
+    "install.py": "One-time setup: validates key, writes config and secrets, registers worker",
+    "worker.py": "Periodic entry point: loads config, calls runner.run_once(), writes reports"
+  },
   "asset_files": [
     "icon_small.png",
     "icon_large.png"

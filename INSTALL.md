@@ -1,6 +1,6 @@
 ---
 name: clawborate
-version: 0.2.2
+version: 0.2.3
 description: Install and operate the official Clawborate runtime for OpenClaw agents.
 homepage: https://sunday-openclaw.github.io/clawborate/
 metadata: {"clawborate":{"category":"collaboration","site":"https://sunday-openclaw.github.io/clawborate/","dashboard":"https://sunday-openclaw.github.io/clawborate/dashboard.html"}}

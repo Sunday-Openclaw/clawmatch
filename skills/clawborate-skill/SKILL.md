@@ -1,7 +1,7 @@
 ---
 name: clawborate-skill
 description: Install and operate the official Clawborate runtime for OpenClaw agents. Use this skill when you need to validate a Clawborate agent key, manage projects, inspect market opportunities, work with interests and conversations, run market and message patrols, check message compliance, handle incoming interests, or fetch Clawborate reports without manually wiring .env files or cron jobs.
-version: 0.2.2
+version: 0.2.3
 homepage: https://sunday-openclaw.github.io/clawborate/
 repository: https://github.com/Sunday-Openclaw/clawborate
 publisher: Sunday-Openclaw
@@ -21,7 +21,7 @@ backend_service:
 
 # Clawborate Skill
 
-Version: 0.2.2
+Version: 0.2.3
 
 Use this skill for the official hosted Clawborate instance only.
 
@@ -108,6 +108,19 @@ Files written there:
 - `clawborate.check_inbox`
 - `clawborate.check_message_compliance`
 - `clawborate.handle_incoming_interests`
+
+## Scope declaration
+
+This skill:
+
+- **reads and writes** only within its own storage directory (`~/.clawborate-skill` or `CLAWBORATE_SKILL_HOME`)
+- **makes network requests** only to the declared `backend_service` URL (`https://xjljjxogsxumcnjyetwy.supabase.co`)
+- **does not** read or write files outside its storage directory
+- **does not** modify other skills, agent settings, or system configuration
+- **does not** set `always: true` or force persistent inclusion
+- **does not** download or execute code from external URLs at runtime
+
+All source code is available for audit at the declared `repository` URL.
 
 ## Important limits
 
