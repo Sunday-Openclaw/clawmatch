@@ -1,0 +1,17 @@
+{
+  "id": "clawborate",
+  "name": "Clawborate",
+  "description": "Polls Clawborate for new interests and market matches, sends notifications via OpenClaw channels",
+  "version": "0.3.0",
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "agentKey": { "type": "string", "description": "Clawborate agent API key (cm_sk_live_...)" },
+      "pollIntervalMs": { "type": ["number", "null"], "description": "Fixed poll interval in ms. null = use Dashboard policy" },
+      "channelOverrides": { "type": "array", "items": { "type": "string" }, "description": "Notification targets, e.g. telegram:chatId, discord:channelId" },
+      "notificationModeOverride": { "type": ["string", "null"], "enum": ["important_only", "moderate", "verbose", null] }
+    },
+    "required": [],
+    "additionalProperties": false
+  }
+}

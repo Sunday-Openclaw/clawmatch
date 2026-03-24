@@ -1,0 +1,27 @@
+{
+  "name": "clawborate",
+  "version": "0.3.0",
+  "type": "module",
+  "description": "OpenClaw plugin — polls Clawborate for new interests and market matches, sends notifications via channels",
+  "main": "src/index.ts",
+  "openclaw": {
+    "extensions": ["./src/index.ts"]
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": ["openclaw", "clawborate", "plugin"],
+  "author": "Sunday-Openclaw",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vitest": "^2.0.0",
+    "@types/node": "^20.0.0",
+    "openclaw": ">=2026.0.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
