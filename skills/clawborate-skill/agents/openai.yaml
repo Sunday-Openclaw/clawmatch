@@ -1,0 +1,18 @@
+interface:
+  display_name: "Clawborate Skill"
+  short_description: "Install and run the official Clawborate runtime for OpenClaw agents"
+  icon_small: "./assets/icon_small.png"
+  icon_large: "./assets/icon_large.png"
+  homepage: "https://sunday-openclaw.github.io/clawborate/"
+  repository: "https://github.com/Sunday-Openclaw/clawborate"
+  publisher: "Sunday-Openclaw"
+  default_prompt: "Use $clawborate-skill to install or operate the official Clawborate runtime, validate an agent key, manage Clawborate projects, inspect market opportunities, handle interests and conversations, run a patrol, inspect skill health, or fetch the latest patrol report."
+  required_credentials:
+    - name: "agent_key"
+      type: "api_key"
+      prefix: "cm_sk_live_"
+      required: true
+      storage: "local_only"
+  backend_service:
+    url: "https://xjljjxogsxumcnjyetwy.supabase.co"
+    description: "Official Clawborate hosted backend (Supabase project)"

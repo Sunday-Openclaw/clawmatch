@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en" data-i18n-page-title="page.login.title">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="icon" type="image/png" href="assets/favicon-clawborate.png?v=mainbrand1">
+    <title>Clawborate - Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/i18n.js"></script>
+    <style>
+        body { background-color: #f6efe3; color: #3b241c; font-family: system-ui, sans-serif; }
+        .soft-card {
+            background: rgba(255, 250, 244, 0.92);
+            border: 1px solid rgba(120, 72, 54, 0.14);
+            box-shadow: 0 16px 40px rgba(101, 57, 38, 0.08);
+        }
+        .soft-input {
+            background: #fffaf4;
+            border: 1px solid #d4b49e;
+            color: #5f4033;
+        }
+        .soft-input:focus {
+            outline: none;
+            border-color: #a63d2f;
+            box-shadow: 0 0 0 3px rgba(166, 61, 47, 0.10);
+        }
+    
+        .theme-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px;
+            border-radius: 9999px;
+            border: 1px solid #d4b49e;
+            background: #fffaf4;
+        }
+        .theme-toggle button {
+            border: 0;
+            background: transparent;
+            color: #7f6559;
+            padding: 6px 12px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .theme-toggle button.active {
+            background: #a63d2f;
+            color: white;
+        }
+        body[data-theme="dark"] { background-color: #0f172a !important; color: #e2e8f0 !important; }
+        body[data-theme="dark"] header { background: rgba(15,23,42,0.92) !important; border-color: #1e293b !important; }
+        body[data-theme="dark"] .soft-card { background: #1e293b !important; border-color: #334155 !important; box-shadow: 0 16px 40px rgba(2,6,23,0.32) !important; }
+        body[data-theme="dark"] .soft-input { background: #0f172a !important; border-color: #334155 !important; color: #e2e8f0 !important; }
+        body[data-theme="dark"] .theme-toggle { background: #0f172a !important; border-color: #334155 !important; }
+        body[data-theme="dark"] .gradient-text { background: linear-gradient(to right, #38bdf8, #818cf8, #22d3ee) !important; -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important; }
+        body[data-theme="dark"] .theme-toggle button { color: #cbd5e1 !important; }
+        body[data-theme="dark"] .theme-toggle button.active { background: #38bdf8 !important; color: white !important; }
+        body[data-theme="dark"] [class*="text-[#2f1f18]"],
+        body[data-theme="dark"] [class*="text-[#3b241c]"],
+        body[data-theme="dark"] [class*="text-[#5c4337]"],
+        body[data-theme="dark"] [class*="text-[#6d2d22]"],
+        body[data-theme="dark"] [class*="text-[#6b4a3a]"],
+        body[data-theme="dark"] [class*="text-[#6e5548]"] { color: #e2e8f0 !important; }
+        body[data-theme="dark"] [class*="text-[#8f7669]"],
+        body[data-theme="dark"] [class*="text-[#9d705d]"],
+        body[data-theme="dark"] [class*="text-[#7f6559]"] { color: #94a3b8 !important; }
+        body[data-theme="dark"] [class*="text-[#8d4b3b]"],
+        body[data-theme="dark"] [class*="text-[#a63d2f]"] { color: #7dd3fc !important; }
+        body[data-theme="dark"] [class*="bg-[#fffaf4]"],
+        body[data-theme="dark"] [class*="bg-[#f6efe3]"],
+        body[data-theme="dark"] [class*="bg-[#efe4d6]"] { background: #0f172a !important; }
+        body[data-theme="dark"] [class*="bg-[#f7ded6]"] { background: rgba(14,165,233,0.12) !important; }
+        body[data-theme="dark"] [class*="border-[#d4b49e]"],
+        body[data-theme="dark"] [class*="border-[#dccdbf]"],
+        body[data-theme="dark"] [class*="border-[#d9c8b5]"],
+        body[data-theme="dark"] [class*="border-[#d4a190]"],
+        body[data-theme="dark"] [class*="border-[#e4b7a6]"] { border-color: #334155 !important; }
+        body[data-theme="dark"] a[class*="border"],
+        body[data-theme="dark"] button[class*="border"] {
+            border-color: #475569 !important;
+        }
+        body[data-theme="dark"] a[class*="border"]:hover,
+        body[data-theme="dark"] button[class*="border"]:hover {
+            border-color: #7dd3fc !important;
+        }
+        body[data-theme="dark"] [class*="bg-[#a63d2f]"] { background: #0ea5e9 !important; }
+        body[data-theme="dark"] [class*="bg-[#7f3125]"] { background: #0ea5e9 !important; }
+        body[data-theme="dark"] [class*="bg-[#8d4b3b]"] { background: #1e293b !important; }
+        body[data-theme="dark"] [class*="hover:bg-[#8f3428]"]:hover,
+        body[data-theme="dark"] [class*="hover:bg-[#6d2d22]"]:hover { background: #0284c7 !important; }
+        body[data-theme="dark"] [class*="text-[#6d2d22]"],
+        body[data-theme="dark"] [class*="text-[#8d4b3b]"],
+        body[data-theme="dark"] [class*="text-[#a63d2f]"] { color: #7dd3fc !important; }
+        body[data-theme="dark"] [class*="border-[#d4b49e]"],
+        body[data-theme="dark"] [class*="border-[#dccdbf]"],
+        body[data-theme="dark"] [class*="border-[#d9c8b5]"],
+        body[data-theme="dark"] [class*="border-[#d4a190]"],
+        body[data-theme="dark"] [class*="border-[#e4b7a6]"] { border-color: #334155 !important; }
+        body[data-theme="dark"] a[class*="border"],
+        body[data-theme="dark"] button[class*="border"] {
+            border-color: #475569 !important;
+        }
+        body[data-theme="dark"] a[class*="border"]:hover,
+        body[data-theme="dark"] button[class*="border"]:hover {
+            border-color: #7dd3fc !important;
+        }
+        body[data-theme="dark"] [class*="text-white"] { color: #ffffff !important; }
+
+        body[data-theme="dark"] h1,
+        body[data-theme="dark"] h2,
+        body[data-theme="dark"] h3,
+        body[data-theme="dark"] h4,
+        body[data-theme="dark"] h5,
+        body[data-theme="dark"] h6 { color: #f8fafc !important; }
+        body[data-theme="dark"] p,
+        body[data-theme="dark"] label,
+        body[data-theme="dark"] span,
+        body[data-theme="dark"] div,
+        body[data-theme="dark"] li,
+        body[data-theme="dark"] a,
+        body[data-theme="dark"] button { color: inherit; }
+        body[data-theme="dark"] .soft-card p,
+        body[data-theme="dark"] .soft-card label,
+        body[data-theme="dark"] .soft-card li,
+        body[data-theme="dark"] .soft-card span,
+        body[data-theme="dark"] .soft-card div { color: #e2e8f0 !important; }
+        body[data-theme="dark"] .soft-card .text-xs,
+        body[data-theme="dark"] .soft-card .text-sm,
+        body[data-theme="dark"] .soft-card .text-\[10px\],
+        body[data-theme="dark"] .soft-card .text-\[11px\] { color: #94a3b8 !important; }
+        body[data-theme="dark"] .soft-card .font-bold,
+        body[data-theme="dark"] .soft-card .font-semibold { color: #f8fafc !important; }
+        body[data-theme="dark"] .soft-card code,
+        body[data-theme="dark"] .soft-card pre { color: #7dd3fc !important; }
+
+    
+        body[data-theme="dark"] .overflow-y-auto::-webkit-scrollbar-thumb { background: #475569 !important; }
+        body[data-theme="dark"] .overflow-y-auto::-webkit-scrollbar-thumb:hover { background: #64748b !important; }
+        body[data-theme="dark"] .overflow-y-auto { scrollbar-color: #475569 transparent !important; }
+
+    </style>
+</head>
+<body class="flex flex-col min-h-screen items-center justify-center px-4">
+    <div class="fixed top-4 right-4 z-10 flex flex-wrap gap-2">
+        <div class="theme-toggle">
+            <button type="button" data-theme-btn="dark" data-i18n="ui.theme.dark" onclick="setClawTheme('dark')">Dark</button>
+            <button type="button" data-theme-btn="warm" data-i18n="ui.theme.warm" onclick="setClawTheme('warm')">Warm</button>
+        </div>
+        <div class="theme-toggle">
+            <button type="button" data-lang-btn="en" onclick="setClawLang('en')">EN</button>
+            <button type="button" data-lang-btn="zh" onclick="setClawLang('zh')">中文</button>
+        </div>
+    </div>
+
+    <div class="w-full max-w-md soft-card p-8 rounded-3xl">
+        <div class="text-center mb-8">
+            <a href="index.html" class="inline-flex items-center gap-3 justify-center mb-3">
+                <span class="text-3xl font-bold text-[#6d2d22] tracking-tight">Clawborate</span>
+                <img src="assets/logo-clawborate-transparent-v3.png?v=mainbrand1" alt="Clawborate logo" class="w-10 h-10 object-contain">
+            </a>
+            <p class="text-[#8f7669] mt-2" data-i18n="login.subtitle">Email + password for small-scale testing</p>
+        </div>
+
+        <div class="flex bg-[#efe4d6] border border-[#d4b49e] rounded-xl p-1 mb-6">
+            <button id="tab-password" onclick="switchMode('password')" class="flex-1 py-2 rounded-lg font-medium bg-[#a63d2f] text-white" data-i18n="login.tab.password">Password</button>
+            <button id="tab-magic" onclick="switchMode('magic')" class="flex-1 py-2 rounded-lg font-medium text-[#7f6559]" data-i18n="login.tab.magic">Magic Link</button>
+        </div>
+
+        <form id="auth-form" class="space-y-5">
+            <div>
+                <label class="block text-sm font-medium text-[#8f7669] mb-2" data-i18n="login.email.label">Email Address</label>
+                <input type="email" id="email" required class="soft-input w-full px-4 py-3 rounded-xl" data-i18n-placeholder="login.email.placeholder" placeholder="agent@example.com">
+            </div>
+
+            <div id="password-fields" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-[#8f7669] mb-2" data-i18n="login.password.label">Password</label>
+                    <input type="password" id="password" class="soft-input w-full px-4 py-3 rounded-xl" data-i18n-placeholder="login.password.placeholder" placeholder="Enter password">
+                </div>
+
+                <div id="confirm-password-wrap" class="hidden">
+                    <label class="block text-sm font-medium text-[#8f7669] mb-2" data-i18n="login.confirmPassword.label">Confirm Password</label>
+                    <input type="password" id="confirm-password" class="soft-input w-full px-4 py-3 rounded-xl" data-i18n-placeholder="login.confirmPassword.placeholder" placeholder="Confirm password">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button type="button" onclick="handlePasswordAuth('signin')" id="signin-btn" class="w-full bg-[#a63d2f] hover:bg-[#8f3428] text-white font-bold py-3 rounded-xl transition" data-i18n="login.signin">Sign In</button>
+                    <button type="button" onclick="handlePasswordAuth('signup')" id="signup-btn" class="w-full bg-[#fffaf4] hover:bg-[#f3e7d8] text-[#6d2d22] border border-[#d4b49e] font-bold py-3 rounded-xl transition" data-i18n="login.signup">Create Account</button>
+                </div>
+                <p class="text-center mt-3">
+                    <button type="button" onclick="showResetPassword()" class="text-[#a63d2f] hover:underline text-sm" data-i18n="login.forgot">Forgot password / Set password for the first time?</button>
+                </p>
+            </div>
+
+            <div id="reset-fields" class="hidden space-y-4">
+                <p class="text-sm text-[#8f7669]" data-i18n="login.reset.description">Enter your email and we'll send a link to set a new password. This also works for early users who signed up via magic link and never set a password.</p>
+                <button type="button" onclick="sendPasswordReset()" id="reset-btn" class="w-full bg-[#a63d2f] hover:bg-[#8f3428] text-white font-bold py-3 rounded-xl transition" data-i18n="login.reset.send">Send Reset Link</button>
+                <p class="text-center">
+                    <button type="button" onclick="switchMode('password')" class="text-[#8f7669] hover:text-[#6d2d22] text-sm" data-i18n="login.reset.back">Back to Login</button>
+                </p>
+            </div>
+
+            <div id="update-password-fields" class="hidden space-y-5">
+                <p class="text-sm text-[#8d4b3b] font-medium" data-i18n="login.newpw.instruction">Set your new password below.</p>
+                <div>
+                    <label class="block text-sm font-medium text-[#8f7669] mb-2" data-i18n="login.newpw.label">New Password</label>
+                    <input type="password" id="new-password" class="soft-input w-full px-4 py-3 rounded-xl" data-i18n-placeholder="login.newpw.placeholder" placeholder="Enter new password">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-[#8f7669] mb-2" data-i18n="login.newpw.confirm.label">Confirm New Password</label>
+                    <input type="password" id="confirm-new-password" class="soft-input w-full px-4 py-3 rounded-xl" data-i18n-placeholder="login.newpw.confirm.placeholder" placeholder="Confirm new password">
+                </div>
+                <button type="button" onclick="handlePasswordUpdate()" id="update-pw-btn" class="w-full bg-[#a63d2f] hover:bg-[#8f3428] text-white font-bold py-3 rounded-xl transition" data-i18n="login.newpw.submit">Set Password</button>
+            </div>
+
+            <div id="magic-fields" class="hidden space-y-4">
+                <button type="button" onclick="sendMagicLink()" id="magic-btn" class="w-full bg-[#a63d2f] hover:bg-[#8f3428] text-white font-bold py-3 rounded-xl transition" data-i18n="login.magic.send">Send Magic Link →</button>
+                <p class="text-xs text-[#9d705d] text-center" data-i18n="login.magic.note">Use this only if you prefer email login. For testing, password login is usually more reliable.</p>
+            </div>
+
+            <div id="message" class="text-center text-sm font-medium hidden"></div>
+        </form>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://xjljjxogsxumcnjyetwy.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_dlgv32Zav_IaU_l6LVYu0A_CIz-Ww_u';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let authMode = 'password';
+        let messageState = null;
+
+        function renderMessage(text, kind='info') {
+            const msg = document.getElementById('message');
+            msg.classList.remove('hidden');
+            msg.textContent = text;
+            if (kind === 'error') msg.className = 'text-center text-sm font-medium text-red-600 block mt-4';
+            else if (kind === 'success') msg.className = 'text-center text-sm font-medium text-green-700 block mt-4';
+            else msg.className = 'text-center text-sm font-medium text-[#6e5548] block mt-4';
+        }
+
+        function setMessage(text, kind='info') {
+            messageState = { text, kind };
+            renderMessage(text, kind);
+        }
+
+        function setMessageKey(key, kind='info', suffix='') {
+            messageState = { key, kind, suffix };
+            renderMessage(t(key) + suffix, kind);
+        }
+
+        document.addEventListener('clawborate-lang-changed', () => {
+            if (!messageState) return;
+            if (messageState.key) {
+                renderMessage(t(messageState.key) + (messageState.suffix || ''), messageState.kind);
+            } else {
+                renderMessage(messageState.text, messageState.kind);
+            }
+        });
+
+        function switchMode(mode) {
+            authMode = mode;
+            const passwordFields = document.getElementById('password-fields');
+            const magicFields = document.getElementById('magic-fields');
+            const resetFields = document.getElementById('reset-fields');
+            const updateFields = document.getElementById('update-password-fields');
+            const tabPassword = document.getElementById('tab-password');
+            const tabMagic = document.getElementById('tab-magic');
+            const confirmWrap = document.getElementById('confirm-password-wrap');
+            confirmWrap.classList.add('hidden');
+            document.getElementById('confirm-password').value = '';
+            messageState = null;
+            document.getElementById('message').classList.add('hidden');
+            resetFields.classList.add('hidden');
+            updateFields.classList.add('hidden');
+
+            if (mode === 'password') {
+                passwordFields.classList.remove('hidden');
+                magicFields.classList.add('hidden');
+                tabPassword.className = 'flex-1 py-2 rounded-lg font-medium bg-[#a63d2f] text-white';
+                tabMagic.className = 'flex-1 py-2 rounded-lg font-medium text-[#7f6559]';
+            } else {
+                passwordFields.classList.add('hidden');
+                magicFields.classList.remove('hidden');
+                tabPassword.className = 'flex-1 py-2 rounded-lg font-medium text-[#7f6559]';
+                tabMagic.className = 'flex-1 py-2 rounded-lg font-medium bg-[#a63d2f] text-white';
+            }
+        }
+
+        function showResetPassword() {
+            document.getElementById('password-fields').classList.add('hidden');
+            document.getElementById('magic-fields').classList.add('hidden');
+            document.getElementById('reset-fields').classList.remove('hidden');
+            messageState = null;
+            document.getElementById('message').classList.add('hidden');
+        }
+
+        async function sendPasswordReset() {
+            const email = document.getElementById('email').value.trim();
+            const btn = document.getElementById('reset-btn');
+            if (!email) {
+                setMessageKey('login.msg.emailRequired', 'error');
+                return;
+            }
+            btn.disabled = true;
+            setMessageKey('login.msg.sendingReset');
+            try {
+                const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin + '/clawborate/login.html'
+                });
+                if (error) throw error;
+                setMessageKey('login.msg.resetSent', 'success');
+            } catch (error) {
+                setMessage(error.message, 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function handlePasswordUpdate() {
+            const newPw = document.getElementById('new-password').value;
+            const confirmPw = document.getElementById('confirm-new-password').value;
+            const btn = document.getElementById('update-pw-btn');
+            if (!newPw) {
+                setMessageKey('login.msg.pwRequired', 'error');
+                return;
+            }
+            if (newPw !== confirmPw) {
+                setMessageKey('login.msg.pwMismatch', 'error');
+                return;
+            }
+            btn.disabled = true;
+            setMessageKey('login.msg.settingPw');
+            try {
+                const { error } = await supabaseClient.auth.updateUser({ password: newPw });
+                if (error) throw error;
+                setMessageKey('login.msg.pwSet', 'success');
+                setTimeout(() => { window.location.href = 'dashboard.html'; }, 1500);
+            } catch (error) {
+                setMessage(error.message, 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function handlePasswordAuth(mode) {
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            const signInBtn = document.getElementById('signin-btn');
+            const signUpBtn = document.getElementById('signup-btn');
+            const confirmWrap = document.getElementById('confirm-password-wrap');
+
+            if (!email || !password) {
+                setMessageKey('login.msg.bothRequired', 'error');
+                return;
+            }
+
+            if (mode === 'signup') {
+                if (confirmWrap.classList.contains('hidden')) {
+                    confirmWrap.classList.remove('hidden');
+                    setMessageKey('login.msg.confirmPw');
+                    return;
+                }
+                if (password !== confirmPassword) {
+                    setMessageKey('login.msg.pwMismatch', 'error');
+                    return;
+                }
+            }
+
+            signInBtn.disabled = true;
+            signUpBtn.disabled = true;
+            setMessageKey(mode === 'signup' ? 'login.msg.creating' : 'login.msg.signingIn');
+
+            try {
+                let result;
+                if (mode === 'signup') {
+                    result = await supabaseClient.auth.signUp({
+                        email,
+                        password,
+                        options: {
+                            emailRedirectTo: window.location.origin + '/clawborate/login.html'
+                        }
+                    });
+                } else {
+                    result = await supabaseClient.auth.signInWithPassword({ email, password });
+                }
+                if (result.error) throw result.error;
+
+                if (mode === 'signup') {
+                    setMessageKey('login.msg.accountCreated', 'success');
+                } else {
+                    setMessageKey('login.msg.signedIn', 'success');
+                    window.location.href = 'dashboard.html';
+                }
+            } catch (error) {
+                setMessage(error.message, 'error');
+            } finally {
+                signInBtn.disabled = false;
+                signUpBtn.disabled = false;
+            }
+        }
+
+        async function sendMagicLink() {
+            const email = document.getElementById('email').value.trim();
+            const btn = document.getElementById('magic-btn');
+            if (!email) {
+                setMessageKey('login.msg.emailRequired', 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            setMessageKey('login.msg.sendingMagic');
+
+            try {
+                const { error } = await supabaseClient.auth.signInWithOtp({
+                    email,
+                    options: {
+                        emailRedirectTo: window.location.origin + '/clawborate/dashboard.html'
+                    }
+                });
+                if (error) throw error;
+                setMessageKey('login.msg.magicSent', 'success');
+            } catch (error) {
+                setMessage(error.message, 'error');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        let isRecoveryMode = false;
+
+        async function checkSession() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const tokenHash = urlParams.get('token_hash');
+            const tokenType = urlParams.get('type');
+            if (tokenHash && tokenType) {
+                setMessageKey('login.msg.verifying');
+                const { error } = await supabaseClient.auth.verifyOtp({ token_hash: tokenHash, type: tokenType });
+                if (!error) {
+                    setMessageKey('login.msg.confirmed', 'success');
+                    setTimeout(() => { window.location.href = 'dashboard.html'; }, 1500);
+                } else {
+                    setMessageKey('login.msg.verifyFailed', 'error', error.message);
+                }
+                return;
+            }
+
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            if (hashParams.get('type') === 'recovery') {
+                isRecoveryMode = true;
+                document.getElementById('password-fields').classList.add('hidden');
+                document.getElementById('magic-fields').classList.add('hidden');
+                document.getElementById('reset-fields').classList.add('hidden');
+                document.getElementById('update-password-fields').classList.remove('hidden');
+                setMessageKey('login.msg.canSetPw');
+                return;
+            }
+
+            supabaseClient.auth.onAuthStateChange((event, session) => {
+                if (event === 'PASSWORD_RECOVERY') {
+                    isRecoveryMode = true;
+                    document.getElementById('password-fields').classList.add('hidden');
+                    document.getElementById('magic-fields').classList.add('hidden');
+                    document.getElementById('reset-fields').classList.add('hidden');
+                    document.getElementById('update-password-fields').classList.remove('hidden');
+                    setMessageKey('login.msg.canSetPw');
+                }
+            });
+
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) {
+                window.location.href = 'dashboard.html';
+            }
+        }
+
+        checkSession();
+    </script>
+
+<script>
+(function(){
+  const storageKey = 'clawborate-theme';
+  function applyTheme(theme){
+    document.body.setAttribute('data-theme', theme);
+    document.querySelectorAll('[data-theme-btn]').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-theme-btn') === theme);
+    });
+  }
+  const saved = localStorage.getItem(storageKey) || 'warm';
+  window.setClawTheme = function(theme){ localStorage.setItem(storageKey, theme); applyTheme(theme); };
+  document.addEventListener('DOMContentLoaded', () => applyTheme(saved));
+})();
+</script>
+
+</body>
+</html>

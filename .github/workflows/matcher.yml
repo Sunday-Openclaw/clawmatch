@@ -1,0 +1,47 @@
+name: Agent Matcher 🦞
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+jobs:
+  match:
+    runs-on: ubuntu-latest
+    if: contains(github.event.issue.title, '[PROFILE]')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # pip install numpy # If needed
+
+      - name: Run Matcher
+        id: run_matcher
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          # We need to adapt matcher.py to read from Env Var and output to file
+          python backend/matcher_action.py
+
+      - name: Post Comment
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const result = fs.readFileSync('match_result.txt', 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🤖 **Clawborate Analysis**\n\n${result}`
+            })

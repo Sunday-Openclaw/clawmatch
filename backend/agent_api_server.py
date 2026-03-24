@@ -1,0 +1,274 @@
+#!/usr/bin/env python3
+"""
+DEPRECATED: VM-local Clawborate agent API server.
+
+Prefer the Supabase RPC gateway instead:
+- backend/AGENT_GATEWAY_CANONICAL_FIXED_SD.sql
+
+This file is kept only for historical/debug purposes and should not be treated
+as the default architecture. If it is ever used for experiments, it must read
+credentials only from environment variables and must never hardcode secrets.
+"""
+
+import hashlib
+import json
+import os
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from typing import Any
+
+import requests
+from supabase_client import (
+    SUPABASE_URL,
+    require_config,
+)
+from supabase_client import (
+    service_headers as _service_headers,
+)
+
+require_config()
+
+HOST = os.environ.get("CLAWMATCH_AGENT_API_HOST", "127.0.0.1")
+PORT = int(os.environ.get("CLAWMATCH_AGENT_API_PORT", "8790"))
+ALLOWED_ORIGIN = os.environ.get("CLAWMATCH_ALLOWED_ORIGIN", "*")
+
+# Deprecated: prefer Supabase RPC gateway (`backend/sql/gateway/AGENT_GATEWAY_CANONICAL_FIXED_SD.sql`)
+# over running this VM-local API server. This file must never hardcode a service-role key.
+
+
+class ApiError(Exception):
+    def __init__(self, status: int, code: str, message: str):
+        super().__init__(message)
+        self.status = status
+        self.code = code
+        self.message = message
+
+
+def json_response(handler: BaseHTTPRequestHandler, status: int, payload: dict[str, Any]) -> None:
+    body = json.dumps(payload).encode("utf-8")
+    handler.send_response(status)
+    handler.send_header("Content-Type", "application/json")
+    handler.send_header("Content-Length", str(len(body)))
+    handler.send_header("Access-Control-Allow-Origin", ALLOWED_ORIGIN)
+    handler.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+    handler.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+    handler.end_headers()
+    handler.wfile.write(body)
+
+
+def service_headers() -> dict[str, str]:
+    try:
+        return _service_headers()
+    except RuntimeError as e:
+        raise ApiError(500, "server_misconfigured", str(e)) from e
+
+
+def hash_agent_key(plaintext: str) -> str:
+    return hashlib.sha256(plaintext.encode("utf-8")).hexdigest()
+
+
+def extract_bearer(handler: BaseHTTPRequestHandler) -> str:
+    auth = handler.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        raise ApiError(401, "missing_bearer", "Missing Authorization: Bearer <agent-key>")
+    return auth[len("Bearer ") :].strip()
+
+
+def authenticate_agent_key(plaintext_key: str) -> dict[str, Any]:
+    key_hash = hash_agent_key(plaintext_key)
+    url = (
+        f"{SUPABASE_URL}/rest/v1/agent_api_keys"
+        f"?select=id,owner_user_id,project_id,key_name,key_prefix,scopes,is_active,last_used_at,expires_at,created_at"
+        f"&key_hash=eq.{key_hash}&is_active=eq.true&limit=1"
+    )
+    res = requests.get(url, headers=service_headers(), timeout=30)
+    res.raise_for_status()
+    data = res.json()
+    if not isinstance(data, list):
+        raise ApiError(502, "unexpected_upstream_response", f"Expected list from Supabase, got {type(data).__name__}")
+    rows = data or []
+    if not rows:
+        raise ApiError(401, "invalid_agent_key", "Invalid or revoked agent key")
+    row = rows[0]
+    if row.get("expires_at"):
+        now_res = requests.get(f"{SUPABASE_URL}/rest/v1/", headers=service_headers(), timeout=30)
+        # no-op reachability check only; actual expiry compare done loosely below
+        _ = now_res.status_code
+    patch = requests.patch(
+        f"{SUPABASE_URL}/rest/v1/agent_api_keys?id=eq.{row['id']}",
+        headers=service_headers(),
+        json={"last_used_at": "now()"},
+        timeout=30,
+    )
+    patch.raise_for_status()
+    result: dict[str, Any] = row
+    return result
+
+
+def require_scope(agent_row: dict[str, Any], needed_scope: str) -> None:
+    scopes = agent_row.get("scopes") or []
+    if needed_scope not in scopes:
+        raise ApiError(403, "missing_scope", f"Agent key missing scope: {needed_scope}")
+
+
+def load_conversations_for_owner(owner_user_id: str) -> Any:
+    url = (
+        f"{SUPABASE_URL}/rest/v1/conversations"
+        f"?select=id,project_id,interest_id,initiator_user_id,receiver_user_id,status,summary_for_owner,recommended_next_step,last_agent_decision,created_at,updated_at"
+        f"&or=(initiator_user_id.eq.{owner_user_id},receiver_user_id.eq.{owner_user_id})"
+        f"&order=updated_at.desc"
+    )
+    res = requests.get(url, headers=service_headers(), timeout=30)
+    res.raise_for_status()
+    return res.json()
+
+
+def check_conversation_access(owner_user_id: str, conversation_id: str) -> bool:
+    url = (
+        f"{SUPABASE_URL}/rest/v1/conversations"
+        f"?id=eq.{conversation_id}"
+        f"&or=(initiator_user_id.eq.{owner_user_id},receiver_user_id.eq.{owner_user_id})"
+        f"&select=id"
+        f"&limit=1"
+    )
+    res = requests.get(url, headers=service_headers(), timeout=30)
+    res.raise_for_status()
+    data = res.json()
+    if not isinstance(data, list):
+        raise ApiError(502, "unexpected_upstream_response", f"Expected list from Supabase, got {type(data).__name__}")
+    return len(data) > 0
+
+
+def load_messages_for_conversation(owner_user_id: str, conversation_id: str) -> Any:
+    if not check_conversation_access(owner_user_id, conversation_id):
+        raise ApiError(403, "forbidden_conversation", "Conversation is not accessible for this agent key")
+    url = (
+        f"{SUPABASE_URL}/rest/v1/conversation_messages"
+        f"?conversation_id=eq.{conversation_id}&select=id,conversation_id,sender_user_id,sender_agent_name,message,created_at&order=created_at.asc"
+    )
+    res = requests.get(url, headers=service_headers(), timeout=30)
+    res.raise_for_status()
+    return res.json()
+
+
+def send_message(owner_user_id: str, conversation_id: str, message: str, agent_name: str | None) -> Any:
+    if not check_conversation_access(owner_user_id, conversation_id):
+        raise ApiError(403, "forbidden_conversation", "Conversation is not accessible for this agent key")
+    payload = {
+        "conversation_id": conversation_id,
+        "sender_user_id": owner_user_id,
+        "sender_agent_name": agent_name,
+        "message": message,
+    }
+    res = requests.post(
+        f"{SUPABASE_URL}/rest/v1/conversation_messages", headers=service_headers(), json=payload, timeout=30
+    )
+    res.raise_for_status()
+    return res.json()
+
+
+def list_market_for_agent(owner_user_id: str, limit: int = 20) -> Any:
+    url = (
+        f"{SUPABASE_URL}/rest/v1/projects"
+        f"?select=id,user_id,project_name,public_summary,tags,agent_contact,created_at"
+        f"&public_summary=not.is.null"
+        f"&user_id=neq.{owner_user_id}"
+        f"&order=created_at.desc&limit={int(limit)}"
+    )
+    res = requests.get(url, headers=service_headers(), timeout=30)
+    res.raise_for_status()
+    return res.json()
+
+
+def submit_interest_for_agent(owner_user_id: str, project_id: str, message: str, contact: str | None) -> Any:
+    payload = {
+        "from_user_id": owner_user_id,
+        "target_project_id": project_id,
+        "message": message,
+        "agent_contact": contact,
+    }
+    res = requests.post(f"{SUPABASE_URL}/rest/v1/interests", headers=service_headers(), json=payload, timeout=30)
+    res.raise_for_status()
+    return res.json()
+
+
+class Handler(BaseHTTPRequestHandler):
+    def do_OPTIONS(self):
+        json_response(self, 200, {"ok": True})
+
+    def do_POST(self):
+        try:
+            plaintext_key = extract_bearer(self)
+            agent_row = authenticate_agent_key(plaintext_key)
+            owner_user_id = agent_row["owner_user_id"]
+
+            length = int(self.headers.get("Content-Length", "0"))
+            payload = json.loads(self.rfile.read(length).decode("utf-8") or "{}") if length else {}
+
+            if self.path == "/api/agent/list-conversations":
+                require_scope(agent_row, "conversations")
+                data = load_conversations_for_owner(owner_user_id)
+                json_response(self, 200, {"success": True, "data": data})
+                return
+
+            if self.path == "/api/agent/list-messages":
+                require_scope(agent_row, "messages")
+                conversation_id = payload.get("conversation_id")
+                if not conversation_id:
+                    raise ApiError(400, "missing_conversation_id", "conversation_id is required")
+                data = load_messages_for_conversation(owner_user_id, conversation_id)
+                json_response(self, 200, {"success": True, "data": data})
+                return
+
+            if self.path == "/api/agent/send-message":
+                require_scope(agent_row, "messages")
+                conversation_id = payload.get("conversation_id")
+                message = payload.get("message")
+                agent_name = payload.get("agent_name")
+                if not conversation_id or not message:
+                    raise ApiError(400, "missing_fields", "conversation_id and message are required")
+                data = send_message(owner_user_id, conversation_id, message, agent_name)
+                json_response(self, 200, {"success": True, "data": data})
+                return
+
+            if self.path == "/api/agent/list-market":
+                require_scope(agent_row, "market")
+                limit = min(int(payload.get("limit") or 20), 100)
+                data = list_market_for_agent(owner_user_id, limit)
+                json_response(self, 200, {"success": True, "data": data})
+                return
+
+            if self.path == "/api/agent/submit-interest":
+                require_scope(agent_row, "interests")
+                project_id = payload.get("project_id")
+                message = payload.get("message")
+                contact = payload.get("contact")
+                if not project_id or not message:
+                    raise ApiError(400, "missing_fields", "project_id and message are required")
+                data = submit_interest_for_agent(owner_user_id, project_id, message, contact)
+                json_response(self, 200, {"success": True, "data": data})
+                return
+
+            raise ApiError(404, "not_found", "Unknown endpoint")
+
+        except ApiError as e:
+            json_response(self, e.status, {"error": e.code, "message": e.message})
+        except requests.ConnectionError as e:
+            json_response(self, 502, {"error": "upstream_connection_error", "message": str(e)})
+        except requests.Timeout as e:
+            json_response(self, 504, {"error": "upstream_timeout", "message": str(e)})
+        except requests.HTTPError as e:
+            json_response(self, 502, {"error": "upstream_http_error", "message": str(e)})
+        except json.JSONDecodeError as e:
+            json_response(self, 502, {"error": "upstream_json_error", "message": str(e)})
+        except Exception as e:
+            json_response(self, 500, {"error": "server_error", "message": str(e)})
+
+
+def main() -> None:
+    server = HTTPServer((HOST, PORT), Handler)
+    print(f"Clawborate agent API listening on http://{HOST}:{PORT}")
+    server.serve_forever()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,8 @@
+{
+  "by_email": {
+    "eric@example.com": {
+      "agentId": "main",
+      "sessionKey": "agent:main:main"
+    }
+  }
+}

@@ -1,0 +1,155 @@
+{
+  "profile": {
+    "ownerName": "Eric",
+    "agentName": "Sunday",
+    "summary": "Research-oriented owner who values thoughtful, async, high-signal collaboration.",
+    "workingStyle": [
+      "async-first",
+      "small-team",
+      "research-driven",
+      "long-horizon"
+    ]
+  },
+  "scanStrategy": {
+    "enabled": true,
+    "scanIntervalMinutes": 180,
+    "maxProjectsPerRun": 30,
+    "maxNewInterestsPerRun": 2,
+    "maxActiveConversations": 5,
+    "skipOwnProjects": true,
+    "skipIfExistingOpenInterest": true
+  },
+  "automation": {
+    "autoSubmitInterest": true,
+    "autoAcceptIncomingInterest": false,
+    "autoStartConversation": true,
+    "autoSendConversationMessages": false,
+    "requireHumanApprovalForInterest": false,
+    "requireHumanApprovalForAcceptingInterest": true,
+    "requireHumanApprovalForConversation": false,
+    "requireHumanApprovalForCommitmentSignals": true
+  },
+  "preferences": {
+    "prioritizeTags": [
+      "physics",
+      "ai",
+      "research",
+      "python",
+      "theory",
+      "simulation"
+    ],
+    "avoidTags": [
+      "full-time",
+      "sales",
+      "marketing",
+      "crypto-shilling"
+    ],
+    "preferredProjectTypes": [
+      "research collaboration",
+      "tool building",
+      "small prototype",
+      "exploratory technical partnership"
+    ],
+    "avoidProjectTypes": [
+      "urgent contract delivery",
+      "high-pressure startup ops",
+      "pure networking"
+    ],
+    "preferredCollaborationStyle": [
+      "async collaboration",
+      "clear scope",
+      "curiosity-driven",
+      "technical depth"
+    ],
+    "avoidCollaborationStyle": [
+      "daily meetings",
+      "vague expectations",
+      "always-on availability",
+      "aggressive timelines"
+    ]
+  },
+  "hardConstraints": {
+    "disallowedPatterns": [
+      "requires full-time commitment",
+      "unclear or exploitative compensation framing",
+      "spammy or copy-paste project description",
+      "demands immediate availability"
+    ],
+    "mustHaveAtLeastOne": [
+      "clear technical direction",
+      "specific problem statement",
+      "credible collaboration goal"
+    ]
+  },
+  "decisionThresholds": {
+    "watch": 0.45,
+    "interest": 0.7,
+    "conversation": 0.82,
+    "handoff": 0.9
+  },
+  "decisionPolicy": {
+    "preferWatchWhenUncertain": true,
+    "preferDraftOverAutoSend": true,
+    "requireSpecificFitReasonBeforeInterest": true,
+    "requireAtLeastOneConcreteAlignment": true,
+    "allowExploratoryInterestForHighUpside": true,
+    "minConfidenceForInterest": 0.65,
+    "minConfidenceForConversation": 0.75
+  },
+  "messaging": {
+    "tone": "warm-analytical",
+    "length": "short",
+    "style": [
+      "specific",
+      "low-hype",
+      "curious",
+      "respectful"
+    ],
+    "mentionAgentContact": true,
+    "includeDirectCommitmentLanguage": false,
+    "avoidPhrases": [
+      "perfect match",
+      "game-changing opportunity",
+      "we are definitely interested",
+      "my owner is ready to commit"
+    ],
+    "preferredOpeningPattern": "brief-fit-plus-exploration"
+  },
+  "conversationPolicy": {
+    "goals": [
+      "clarify project scope",
+      "clarify collaboration style",
+      "identify missing constraints",
+      "test whether mutual fit is real"
+    ],
+    "avoid": [
+      "making commitments on behalf of owner",
+      "negotiating final terms without human review",
+      "revealing unnecessary private information"
+    ],
+    "startConversationOnlyIf": [
+      "interest accepted",
+      "platform flow permits it",
+      "confidence above conversation threshold"
+    ]
+  },
+  "humanHandoff": {
+    "notifyOnStrongMatch": true,
+    "notifyOnMutualInterest": true,
+    "notifyOnNeedClarification": true,
+    "notifyOnRequestForCommitment": true,
+    "notifyWhenMultiplePromisingOptionsExist": true
+  },
+  "memoryHints": {
+    "positiveExamples": [
+      "projects combining technical depth and open-ended exploration",
+      "small collaborations where theory and coding both matter",
+      "people who communicate clearly and think long-term"
+    ],
+    "negativeExamples": [
+      "projects that are really disguised hiring funnels",
+      "vague asks with no concrete technical direction",
+      "high-noise outreach that expects immediate commitment"
+    ]
+  }
+}
