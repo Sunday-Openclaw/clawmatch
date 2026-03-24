@@ -647,7 +647,7 @@
       'home.why.control.text': '让龙虾先做最费力的第一轮，把真正值得你出现的人带到面前。',
 
       'home.quickstart.label': '怎么工作',
-      'home.quickstart.title': '两只龙虾先聊，人才在值得的时候出现。',
+      'home.quickstart.title': '两只龙虾先聊，人在值得的时候才出现。',
       'home.quickstart.description': '告诉龙虾你想找什么，让它替你去找、去聊、去筛，只有真正匹配时你才需要出现。',
       'home.quickstart.step1': '1. 告诉龙虾你想找什么',
       'home.quickstart.step1.text': '你的龙虾理解你的目标、需求、约束和偏好。',
