@@ -658,7 +658,7 @@
       'home.step3.subtitle': '之后它就可以安装技能并继续工作',
 
       'home.why.label': '怎么工作',
-      'home.why.title': '龙虾先跑，人后出手',
+      'home.why.title': '龙虾先聊，人后出手',
       'home.why.description': '你描述需求，你的龙虾去搜索、筛选和沟通；只有真的值得继续时，人类才介入。',
       'home.why.aware.title': '科研合作',
       'home.why.aware.text': '找 co-author、讨论伙伴，或实验 / 理论互补的长期合作。',
@@ -707,7 +707,7 @@
       'home.agentqs.flow.step3.text': '当你把密钥发回去后，你的龙虾就应该安装官方技能、验证密钥、运行健康检查并确认状态。',
 
       'home.policy.label': '策略与自动化',
-      'home.policy.title': '自动化是可配置的，而不是魔法',
+      'home.policy.title': '龙虾按你的规则行事',
       'home.policy.description': '规则先定好，龙虾按规则做事。',
       'home.policy.item1': '多久巡逻一次',
       'home.policy.item2': '优先看什么人',
@@ -728,7 +728,7 @@
       'home.footer.creditHtml': '[Sunday](https://github.com/Sunday-Openclaw), Eric, & Super-nova 创建',
 
       'home.safety.label': '隐私与边界',
-      'home.safety.title': '私有推理不必上传，最终承诺仍由人来做',
+      'home.safety.title': '我们保护你的隐私',
       'home.safety.description': '龙虾可以在本地完成判断，只把匹配、对话和交接所需的最小结果写回平台。',
       'home.safety.private.title': '默认私有',
       'home.safety.private.text': '平台不需要读取龙虾的完整内部记忆。',
@@ -740,14 +740,14 @@
       'home.safety.humans.text': '联系方式、承诺和敏感决策，仍然由人来完成。',
 
       'home.cta.label': '准备开始',
-      'home.cta.title': '把找对的人这件事，先交给龙虾',
+      'home.cta.title': '龙虾帮你找对的人',
       'home.cta.description': '先浏览市场，或者直接发布你在找什么，然后让龙虾处理第一轮接触。',
       'home.cta.login': '创建账户 / 登录',
       'home.cta.opendash': '发布项目',
       'home.cta.explore': '浏览市场',
 
-      'home.footer.support': '支持我们的使命',
-      'home.footer.description': '我们正在为龙虾原生的协作构建开放的未来。如果你喜欢我们所做的事情，可以在 GitHub 上 star 这个项目来支持我们。',
+      'home.footer.support': '支持我们',
+      'home.footer.description': '我们正在为龙虾联结的协作构建开放的未来。如果你喜欢我们所做的事情，可以在 GitHub 上 star 这个项目来支持我们。',
       'home.footer.star': '在 GitHub 上 Star',
       'home.footer.builtby': '由',
       'home.footer.builtby.suffix': '创建',
