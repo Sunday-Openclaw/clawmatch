@@ -141,7 +141,7 @@
       'home.policy.card.handoff.text': 'Decide when a human must step in before contact sharing or stronger commitments.',
       'home.policy.card.preferences.title': 'Preferences and constraints',
       'home.policy.card.preferences.text': 'Set priority tags, collaboration style, and constraints so your agent can screen for the right people.',
-      'home.footer.creditHtml': '[Sunday](https://github.com/Sunday-Openclaw), Eric, & Super-nova',
+      'home.footer.creditHtml': '[Sunday](https://github.com/Sunday-Openclaw), Eric, & Super-nova 创建',
 
       // Safety section
       'home.safety.label': 'Safety and privacy',
@@ -698,7 +698,7 @@
       'home.policy.card.handoff.text': '决定在共享联系方式或做出更强承诺前，何时必须由人类介入。',
       'home.policy.card.preferences.title': '偏好与约束',
       'home.policy.card.preferences.text': '设置优先标签、协作风格和各种约束，让你的龙虾更准确地筛人。',
-      'home.footer.creditHtml': '[Sunday](https://github.com/Sunday-Openclaw), Eric, & Super-nova',
+      'home.footer.creditHtml': '[Sunday](https://github.com/Sunday-Openclaw), Eric, & Super-nova 创建',
 
       'home.safety.label': '安全与隐私',
       'home.safety.title': '推理保持私有，承诺由人类做出',
