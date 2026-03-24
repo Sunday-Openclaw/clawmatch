@@ -1,0 +1,218 @@
+/* Shared frontend styles extracted from repeated page-level CSS. */
+
+body {
+    background-color: #f6efe3;
+    color: #3b241c;
+    font-family: system-ui, sans-serif;
+}
+
+.soft-card {
+    background: rgba(255, 250, 244, 0.92);
+    border: 1px solid rgba(120, 72, 54, 0.14);
+    box-shadow: 0 16px 40px rgba(101, 57, 38, 0.08);
+}
+
+.soft-input {
+    background: #fffaf4;
+    border: 1px solid #d4b49e;
+    color: #5f4033;
+}
+
+.soft-input:focus {
+    outline: none;
+    border-color: #a63d2f;
+    box-shadow: 0 0 0 3px rgba(166, 61, 47, 0.10);
+}
+
+.theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 9999px;
+    border: 1px solid #d4b49e;
+    background: #fffaf4;
+}
+
+.theme-toggle button {
+    border: 0;
+    background: transparent;
+    color: #7f6559;
+    padding: 6px 12px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.theme-toggle button.active {
+    background: #a63d2f;
+    color: white;
+}
+
+body[data-theme="dark"] {
+    background-color: #0f172a !important;
+    color: #e2e8f0 !important;
+}
+
+body[data-theme="dark"] header {
+    background: rgba(15,23,42,0.92) !important;
+    border-color: #1e293b !important;
+}
+
+body[data-theme="dark"] .soft-card {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    box-shadow: 0 16px 40px rgba(2,6,23,0.32) !important;
+}
+
+body[data-theme="dark"] .soft-input {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+body[data-theme="dark"] .theme-toggle {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+}
+
+body[data-theme="dark"] .theme-toggle button {
+    color: #cbd5e1 !important;
+}
+
+body[data-theme="dark"] .theme-toggle button.active {
+    background: #38bdf8 !important;
+    color: white !important;
+}
+
+body[data-theme="dark"] [class*="text-[#2f1f18]"],
+body[data-theme="dark"] [class*="text-[#3b241c]"],
+body[data-theme="dark"] [class*="text-[#5c4337]"],
+body[data-theme="dark"] [class*="text-[#6d2d22]"],
+body[data-theme="dark"] [class*="text-[#6b4a3a]"],
+body[data-theme="dark"] [class*="text-[#6e5548]"] {
+    color: #e2e8f0 !important;
+}
+
+body[data-theme="dark"] [class*="text-[#8f7669]"],
+body[data-theme="dark"] [class*="text-[#9d705d]"],
+body[data-theme="dark"] [class*="text-[#7f6559]"] {
+    color: #94a3b8 !important;
+}
+
+body[data-theme="dark"] [class*="text-[#8d4b3b]"],
+body[data-theme="dark"] [class*="text-[#a63d2f]"] {
+    color: #7dd3fc !important;
+}
+
+body[data-theme="dark"] [class*="bg-[#fffaf4]"],
+body[data-theme="dark"] [class*="bg-[#f6efe3]"],
+body[data-theme="dark"] [class*="bg-[#efe4d6]"] {
+    background: #0f172a !important;
+}
+
+body[data-theme="dark"] [class*="bg-[#f7ded6]"] {
+    background: rgba(14,165,233,0.12) !important;
+}
+
+body[data-theme="dark"] [class*="border-[#d4b49e]"],
+body[data-theme="dark"] [class*="border-[#dccdbf]"],
+body[data-theme="dark"] [class*="border-[#d9c8b5]"],
+body[data-theme="dark"] [class*="border-[#d4a190]"],
+body[data-theme="dark"] [class*="border-[#e4b7a6]"] {
+    border-color: #334155 !important;
+}
+
+body[data-theme="dark"] a[class*="border"],
+body[data-theme="dark"] button[class*="border"] {
+    border-color: #475569 !important;
+}
+
+body[data-theme="dark"] a[class*="border"]:hover,
+body[data-theme="dark"] button[class*="border"]:hover {
+    border-color: #7dd3fc !important;
+}
+
+body[data-theme="dark"] [class*="bg-[#a63d2f]"] {
+    background: #0ea5e9 !important;
+}
+
+body[data-theme="dark"] [class*="bg-[#7f3125]"] {
+    background: #0ea5e9 !important;
+}
+
+body[data-theme="dark"] [class*="bg-[#8d4b3b]"] {
+    background: #1e293b !important;
+}
+
+body[data-theme="dark"] [class*="hover:bg-[#8f3428]"]:hover,
+body[data-theme="dark"] [class*="hover:bg-[#6d2d22]"]:hover {
+    background: #0284c7 !important;
+}
+
+body[data-theme="dark"] [class*="text-[#6d2d22]"],
+body[data-theme="dark"] [class*="text-[#8d4b3b]"],
+body[data-theme="dark"] [class*="text-[#a63d2f]"] {
+    color: #7dd3fc !important;
+}
+
+body[data-theme="dark"] [class*="text-white"] {
+    color: #ffffff !important;
+}
+
+body[data-theme="dark"] h1,
+body[data-theme="dark"] h2,
+body[data-theme="dark"] h3,
+body[data-theme="dark"] h4,
+body[data-theme="dark"] h5,
+body[data-theme="dark"] h6 {
+    color: #f8fafc !important;
+}
+
+body[data-theme="dark"] p,
+body[data-theme="dark"] label,
+body[data-theme="dark"] span,
+body[data-theme="dark"] div,
+body[data-theme="dark"] li,
+body[data-theme="dark"] a,
+body[data-theme="dark"] button {
+    color: inherit;
+}
+
+body[data-theme="dark"] .soft-card p,
+body[data-theme="dark"] .soft-card label,
+body[data-theme="dark"] .soft-card li,
+body[data-theme="dark"] .soft-card span,
+body[data-theme="dark"] .soft-card div {
+    color: #e2e8f0 !important;
+}
+
+body[data-theme="dark"] .soft-card .text-xs,
+body[data-theme="dark"] .soft-card .text-sm,
+body[data-theme="dark"] .soft-card .text-\[10px\],
+body[data-theme="dark"] .soft-card .text-\[11px\] {
+    color: #94a3b8 !important;
+}
+
+body[data-theme="dark"] .soft-card .font-bold,
+body[data-theme="dark"] .soft-card .font-semibold {
+    color: #f8fafc !important;
+}
+
+body[data-theme="dark"] .soft-card code,
+body[data-theme="dark"] .soft-card pre {
+    color: #7dd3fc !important;
+}
+
+body[data-theme="dark"] .overflow-y-auto::-webkit-scrollbar-thumb {
+    background: #475569 !important;
+}
+
+body[data-theme="dark"] .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+    background: #64748b !important;
+}
+
+body[data-theme="dark"] .overflow-y-auto {
+    scrollbar-color: #475569 transparent !important;
+}
