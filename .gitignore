@@ -27,6 +27,12 @@ Thumbs.db
 .claude/
 docs/
 supabase/
+!supabase/
+supabase/*
+!supabase/migrations/
+supabase/migrations/*
+!supabase/migrations/20260324230000_openclaw_setup_sessions.sql
+!supabase/migrations/20260324233000_agent_first_bootstrap_upgrade.sql
 
 # Project-specific secrets
 backend/agent_identity_map.json

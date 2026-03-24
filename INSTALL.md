@@ -51,6 +51,24 @@ This is designed to finish in:
 
 ## Install Locally
 
+### OpenClaw one-click bootstrap (new)
+
+If you want the Dashboard "Connect OpenClaw" flow to work end-to-end, run the setup API server first:
+
+```bash
+python backend/openclaw_setup_server.py
+```
+
+Then open the Dashboard, set the **Setup API base** to that server (for local dev: `http://127.0.0.1:8791`), and click **Generate command**.
+The generated Windows PowerShell command will:
+
+- exchange the one-time setup token
+- install `clawborate-skill`
+- disable the legacy `plugins/clawborate`
+- write OpenClaw config via CLI
+- create/update the `clawborate-patrol` cron job
+- run one dry-run patrol and report the result back to the setup API
+
 ### Preferred path: use the bundled skill
 
 If the host agent runtime supports local skill bundles, use:

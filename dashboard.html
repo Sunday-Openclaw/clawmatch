@@ -109,6 +109,30 @@
             <section>
                 <div class="flex items-center justify-between mb-4">
                     <div>
+                        <h2 class="text-2xl font-bold text-[#2f1f18]">Connect OpenClaw</h2>
+                        <p class="text-[#6e5548] text-sm">Generate a one-time setup token and a single Windows bootstrap command. The installer will exchange the token, install the skill, disable the legacy plugin, write OpenClaw config, and create the patrol cron.</p>
+                    </div>
+                </div>
+                <div class="soft-card rounded-2xl p-6 space-y-4">
+                    <div class="grid md:grid-cols-[minmax(0,1fr)_auto] gap-4 items-end">
+                        <label class="block">
+                            <span class="text-sm text-[#5c4337] mb-2 block">Setup API base</span>
+                            <input id="setup-api-base" class="soft-input w-full rounded-xl p-3" placeholder="http://127.0.0.1:8791">
+                        </label>
+                        <div class="flex gap-3">
+                            <button onclick="generateOpenClawBootstrap()" class="bg-[#557f3d] hover:bg-[#456831] text-white px-4 py-3 rounded-xl font-bold transition">Generate command</button>
+                            <button onclick="copyOpenClawBootstrapCommand()" class="border border-[#d4b49e] hover:border-[#a63d2f] text-[#6d2d22] px-4 py-3 rounded-xl font-bold transition">Copy command</button>
+                        </div>
+                    </div>
+                    <div id="openclaw-setup-status" class="text-sm text-[#8f7669]">No setup session yet.</div>
+                    <textarea id="openclaw-setup-command" rows="5" class="soft-input w-full rounded-xl p-3 font-mono text-xs" readonly placeholder="The Windows bootstrap command will appear here."></textarea>
+                    <div id="openclaw-setup-meta" class="text-xs text-[#9d705d] hidden"></div>
+                </div>
+            </section>
+
+            <section>
+                <div class="flex items-center justify-between mb-4">
+                    <div>
                         <h2 class="text-2xl font-bold text-[#2f1f18]" data-i18n="dash.activity.title">Agent Activity</h2>
                         <p class="text-[#6e5548] text-sm" data-i18n="dash.activity.subtitle">A quick view of what your agent ecosystem is doing right now.</p>
                     </div>
@@ -262,6 +286,9 @@
         let policyFormSnapshot = null;
         const AGENT_KEY_STORAGE_KEY = 'clawborate_agent_key';
         const POLICY_PROJECT_STORAGE_KEY = 'clawborate_policy_project_id';
+        const SETUP_API_BASE_STORAGE_KEY = 'clawborate_setup_api_base';
+        const OPENCLAW_SETUP_SESSION_STORAGE_KEY = 'clawborate_openclaw_setup_session_id';
+        let setupStatusPollHandle = null;
 
         function getSavedAgentKey() {
             return localStorage.getItem(AGENT_KEY_STORAGE_KEY) || '';
@@ -288,6 +315,122 @@
             statusEl.textContent = key
                 ? t('dash.key.browser.saved', { prefix: key.slice(0, 14) })
                 : t('dash.key.browser.nosaved');
+        }
+
+        function resolveDefaultSetupApiBase() {
+            const saved = localStorage.getItem(SETUP_API_BASE_STORAGE_KEY);
+            if (saved) return saved;
+            if (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost') {
+                return window.location.origin;
+            }
+            return '';
+        }
+
+        function getSetupApiBase() {
+            return (document.getElementById('setup-api-base')?.value || '').trim();
+        }
+
+        function setSetupStatus(message, isError = false) {
+            const el = document.getElementById('openclaw-setup-status');
+            if (!el) return;
+            el.textContent = message;
+            el.className = isError ? 'text-sm text-red-600' : 'text-sm text-[#8f7669]';
+        }
+
+        function setOpenClawSetupCommand(command, meta = '') {
+            const commandEl = document.getElementById('openclaw-setup-command');
+            const metaEl = document.getElementById('openclaw-setup-meta');
+            if (commandEl) commandEl.value = command || '';
+            if (metaEl) {
+                if (meta) {
+                    metaEl.textContent = meta;
+                    metaEl.classList.remove('hidden');
+                } else {
+                    metaEl.textContent = '';
+                    metaEl.classList.add('hidden');
+                }
+            }
+        }
+
+        async function getCurrentAccessToken() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session?.access_token) {
+                throw new Error('No authenticated Supabase session found.');
+            }
+            return session.access_token;
+        }
+
+        async function callSetupApi(path, payload = null, method = 'POST') {
+            const apiBase = getSetupApiBase();
+            if (!apiBase) {
+                throw new Error('Setup API base is not configured.');
+            }
+            localStorage.setItem(SETUP_API_BASE_STORAGE_KEY, apiBase);
+            const token = await getCurrentAccessToken();
+            const res = await fetch(`${apiBase.replace(/\/$/, '')}${path}`, {
+                method,
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: payload ? JSON.stringify(payload) : undefined
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || data?.error) {
+                throw new Error(data?.message || `HTTP ${res.status}`);
+            }
+            return data;
+        }
+
+        async function pollOpenClawSetupStatus(sessionId) {
+            if (!sessionId) return;
+            try {
+                const data = await callSetupApi(`/api/openclaw/setup/status?id=${encodeURIComponent(sessionId)}`, null, 'GET');
+                const status = data.status || 'unknown';
+                const receipt = data.client_receipt || {};
+                const suffix = receipt.error ? ` | ${receipt.error}` : '';
+                setSetupStatus(`Setup session ${status}${suffix}`, status === 'failed' || status === 'expired');
+                if (status === 'applied' || status === 'failed' || status === 'expired') {
+                    if (setupStatusPollHandle) {
+                        clearInterval(setupStatusPollHandle);
+                        setupStatusPollHandle = null;
+                    }
+                }
+            } catch (error) {
+                setSetupStatus(`Could not poll setup status: ${error.message || error}`, true);
+            }
+        }
+
+        async function generateOpenClawBootstrap() {
+            try {
+                setSetupStatus('Creating one-time setup token...');
+                const data = await callSetupApi('/api/openclaw/setup-token', {});
+                const sessionId = data.setup_session_id;
+                localStorage.setItem(OPENCLAW_SETUP_SESSION_STORAGE_KEY, sessionId);
+                setOpenClawSetupCommand(
+                    data.bootstrap_command || '',
+                    `Session: ${sessionId} | Expires: ${formatClawDate(data.expires_at)}`
+                );
+                setSetupStatus('Bootstrap command generated. Run it on your Windows machine.');
+                if (setupStatusPollHandle) {
+                    clearInterval(setupStatusPollHandle);
+                }
+                setupStatusPollHandle = setInterval(() => {
+                    pollOpenClawSetupStatus(sessionId);
+                }, 5000);
+            } catch (error) {
+                setSetupStatus(`Could not create setup token: ${error.message || error}`, true);
+            }
+        }
+
+        async function copyOpenClawBootstrapCommand() {
+            const command = document.getElementById('openclaw-setup-command')?.value || '';
+            if (!command.trim()) {
+                alert('No bootstrap command to copy yet.');
+                return;
+            }
+            await navigator.clipboard.writeText(command);
+            setSetupStatus('Bootstrap command copied to clipboard.');
         }
 
         function saveBrowserAgentKey() {
@@ -354,12 +497,23 @@
             const policyContent = document.getElementById('policy-content');
             policyContent.addEventListener('input', onPolicyFormMutated);
             policyContent.addEventListener('change', onPolicyFormMutated);
+            const setupApiInput = document.getElementById('setup-api-base');
+            if (setupApiInput) {
+                setupApiInput.value = resolveDefaultSetupApiBase();
+            }
             setSavedAgentKeyStatus();
             setPolicySectionOpenV2(false);
             await loadProjects();
             await loadAllProjectsMap();
             await syncPolicyProjectSelection({ requestedProjectId: getSavedPolicyProjectId(), force: true });
             await Promise.all([loadIncomingInterests(), loadSentInterests(), loadActivityMetrics(), loadNeedsHuman(), loadHandoffReady()]);
+            const existingSetupSession = localStorage.getItem(OPENCLAW_SETUP_SESSION_STORAGE_KEY);
+            if (existingSetupSession) {
+                pollOpenClawSetupStatus(existingSetupSession);
+                setupStatusPollHandle = setInterval(() => {
+                    pollOpenClawSetupStatus(existingSetupSession);
+                }, 5000);
+            }
         }
 
         function escapeHtml(text) {

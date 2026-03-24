@@ -1,3 +1,103 @@
+-- Upgrade Clawborate to the agent-first bootstrap schema and RPC gateway.
+
+alter table public.agent_policies
+  add column if not exists interest_behavior text,
+  add column if not exists reply_behavior text,
+  add column if not exists extra_requirements text not null default '';
+
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'agent_policies'
+      and column_name = 'extra_requirements'
+      and data_type not in ('text', 'character varying')
+  ) then
+    execute 'alter table public.agent_policies alter column extra_requirements type text using extra_requirements::text';
+  end if;
+end
+$$;
+
+update public.agent_policies
+set
+  interest_behavior = coalesce(
+    nullif(interest_behavior, ''),
+    case
+      when interest_policy = 'auto_send_high_confidence' then 'direct_send'
+      else 'notify_then_send'
+    end
+  ),
+  reply_behavior = coalesce(
+    nullif(reply_behavior, ''),
+    case
+      when reply_policy = 'auto_reply_simple' then 'direct_send'
+      else 'notify_then_send'
+    end
+  ),
+  extra_requirements = case
+    when nullif(trim(extra_requirements), '') is not null then extra_requirements
+    else trim(both E'\n' from concat_ws(E'\n',
+      case
+        when nullif(collaborator_preferences->>'preferredWorkingStyle', '') is not null
+        then 'Preferred working style: ' || (collaborator_preferences->>'preferredWorkingStyle') || '.'
+      end,
+      case
+        when nullif(collaborator_preferences->>'constraints', '') is not null
+        then 'Legacy constraints: ' || (collaborator_preferences->>'constraints')
+      end,
+      case
+        when nullif(project_mode, '') is not null
+        then 'Legacy project mode preference: ' || project_mode || '.'
+      end
+    ))
+  end;
+
+alter table public.agent_policies
+  alter column interest_behavior set default 'notify_then_send',
+  alter column interest_behavior set not null,
+  alter column reply_behavior set default 'notify_then_send',
+  alter column reply_behavior set not null,
+  alter column extra_requirements set default '',
+  alter column extra_requirements set not null;
+
+alter table public.agent_policies drop constraint if exists agent_policies_interest_behavior_check;
+alter table public.agent_policies add constraint agent_policies_interest_behavior_check
+check (interest_behavior in ('notify_then_send', 'direct_send'));
+
+alter table public.agent_policies drop constraint if exists agent_policies_reply_behavior_check;
+alter table public.agent_policies add constraint agent_policies_reply_behavior_check
+check (reply_behavior in ('notify_then_send', 'direct_send'));
+
+alter table public.agent_policies
+  drop column if exists project_mode,
+  drop column if exists patrol_scope,
+  drop column if exists interest_policy,
+  drop column if exists reply_policy,
+  drop column if exists handoff_triggers,
+  drop column if exists collaborator_preferences,
+  drop column if exists notification_mode;
+
+alter table public.interests
+  add column if not exists source_project_id uuid references public.projects(id) on delete set null;
+
+create index if not exists interests_source_project_created_idx
+on public.interests (source_project_id, created_at desc);
+
+alter table public.conversations
+  add column if not exists source_project_id uuid references public.projects(id) on delete set null;
+
+update public.conversations c
+set source_project_id = i.source_project_id
+from public.interests i
+where c.source_project_id is null
+  and c.interest_id = i.id
+  and i.source_project_id is not null;
+
+create index if not exists conversations_source_project_updated_idx
+on public.conversations (source_project_id, updated_at desc);
+
 -- Fixed canonical Supabase RPC gateway for long-lived Clawborate agent keys.
 -- SECURITY DEFINER variant: keeps explicit typed auth lookup (to avoid RPC 404)
 -- while bypassing RLS on agent_api_keys / related tables for agent-key auth.
