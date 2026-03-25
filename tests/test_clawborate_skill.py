@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from datetime import datetime, timezone
 
 import pytest
@@ -84,11 +85,30 @@ def fake_client_factory_with(projects=None, policies=None, incoming=None, error=
     return factory
 
 
+def make_test_config(tmp_path, *, agent_contact=None):
+    openclaw_root = tmp_path / "openclaw"
+    workspace = openclaw_root / "workspace"
+    openclaw_root.mkdir(parents=True, exist_ok=True)
+    (openclaw_root / "openclaw.json").write_text(
+        json.dumps(
+            {
+                "agents": {
+                    "defaults": {
+                        "workspace": str(workspace),
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    return ClawborateConfig(openclaw_root=str(openclaw_root), agent_contact=agent_contact)
+
+
 def test_install_skill_creates_private_storage_and_registration(tmp_path):
     result = install_skill(
         agent_key="cm_sk_live_test",
         home=tmp_path,
-        config=ClawborateConfig(agent_contact="@skill-bot"),
+        config=make_test_config(tmp_path, agent_contact="@skill-bot"),
         client_factory=fake_client_factory_with(projects=[{"id": "project-1"}]),
     )
 
@@ -119,6 +139,7 @@ def test_install_skill_surfaces_invalid_agent_key(tmp_path):
         install_skill(
             agent_key="cm_sk_live_bad",
             home=tmp_path,
+            config=make_test_config(tmp_path),
             client_factory=fake_client_factory_with(
                 error=AgentGatewayError("invalid_agent_key", "Invalid or revoked agent key")
             ),
@@ -129,6 +150,7 @@ def test_run_worker_tick_writes_health_and_pauses_on_invalid_key(tmp_path):
     install_skill(
         agent_key="cm_sk_live_test",
         home=tmp_path,
+        config=make_test_config(tmp_path),
         client_factory=fake_client_factory_with(projects=[{"id": "project-1"}]),
     )
 
@@ -178,6 +200,7 @@ def test_revalidate_key_clears_paused_state(tmp_path):
     install_skill(
         agent_key="cm_sk_live_test",
         home=tmp_path,
+        config=make_test_config(tmp_path),
         client_factory=fake_client_factory_with(projects=[{"id": "project-1"}]),
     )
     (tmp_path / "health.json").write_text(
@@ -205,22 +228,41 @@ def test_revalidate_key_clears_paused_state(tmp_path):
 
 
 def test_install_skill_writes_patrol_prompt_and_bootstrap_plan(tmp_path):
+    openclaw_root = tmp_path / "openclaw"
+    workspace = openclaw_root / "workspace"
+    (openclaw_root / "openclaw.json").parent.mkdir(parents=True, exist_ok=True)
+    (openclaw_root / "openclaw.json").write_text(
+        json.dumps(
+            {
+                "agents": {
+                    "defaults": {
+                        "workspace": str(workspace),
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
     result = install_skill(
         agent_key="cm_sk_live_test",
         home=tmp_path,
-        config=ClawborateConfig(openclaw_root=str(tmp_path / "openclaw")),
+        config=make_test_config(tmp_path),
         client_factory=fake_client_factory_with(projects=[{"id": "project-1"}]),
     )
 
     assert (tmp_path / "CLAWBORATE_PATROL.md").exists()
+    assert (workspace / "CLAWBORATE_PATROL.md").exists()
+    assert (workspace / "skills" / "clawborate-skill" / "CLAWBORATE_PATROL.md").exists()
     assert (tmp_path / "bootstrap-plan.json").exists()
     assert result["bootstrap_plan"]["cron"]["name"] == "clawborate-patrol"
+    assert Path(result["bootstrap_plan"]["prompt_path"]) == workspace / "CLAWBORATE_PATROL.md"
 
 
 def test_get_patrol_brief_creates_pending_incoming_interest_actions(tmp_path):
     install_skill(
         agent_key="cm_sk_live_test",
         home=tmp_path,
+        config=make_test_config(tmp_path),
         client_factory=fake_client_factory_with(
             projects=[{"id": "project-1", "project_name": "Alpha", "user_id": "owner-1"}],
             policies={
@@ -285,6 +327,7 @@ def test_apply_market_decision_and_resolve_pending_action(tmp_path):
     install_skill(
         agent_key="cm_sk_live_test",
         home=tmp_path,
+        config=make_test_config(tmp_path),
         client_factory=fake_client_factory_with(
             projects=[{"id": "project-1", "project_name": "Alpha", "user_id": "owner-1"}],
             policies={

@@ -18,6 +18,8 @@ def test_build_bootstrap_command_contains_token_and_api_base():
     assert "claw_setup_abc123" in command
     assert "http://127.0.0.1:8791/api/openclaw/setup/bootstrap.ps1" in command
     assert "powershell -ExecutionPolicy Bypass" in command
+    assert '-Command \'' in command
+    assert '$tmp = Join-Path $env:TEMP "clawborate-bootstrap.ps1"' in command
 
 
 def test_skill_bundle_artifact_contains_skill_root():
@@ -50,7 +52,10 @@ def test_build_install_manifest_includes_required_fields(monkeypatch):
     assert manifest["skill_bundle"]["sha256"] == "f" * 64
     assert manifest["python_runtime"]["url"] == "http://127.0.0.1:8791/python.zip"
     assert manifest["config_batch"][0]["path"] == "plugins.entries.clawborate.enabled"
+    assert manifest["config_batch"][1] == {"path": "agents.defaults.sandbox.mode", "value": "non-main"}
+    assert manifest["config_batch"][2] == {"path": "tools.exec.host", "value": "sandbox"}
     assert manifest["cron_spec"]["name"] == "clawborate-patrol"
+    assert manifest["cron_spec"]["session"] == "isolated"
     assert manifest["plugin_migration"]["disable_legacy_plugin"] is True
 
 

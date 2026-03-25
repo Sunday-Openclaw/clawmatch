@@ -208,6 +208,15 @@ def _read_openclaw_config(openclaw_root: str | Path | None) -> dict[str, Any]:
     return cast(dict[str, Any], load_json(config_path, {}))
 
 
+def _resolve_workspace_path(openclaw_root: str | Path | None, openclaw_config: dict[str, Any]) -> Path:
+    root = Path(openclaw_root).expanduser() if openclaw_root else Path.home() / ".openclaw"
+    defaults = ((openclaw_config.get("agents") or {}).get("defaults") or {})
+    workspace = defaults.get("workspace")
+    if workspace:
+        return Path(str(workspace)).expanduser()
+    return root / "workspace"
+
+
 def _detect_primary_delivery(openclaw_config: dict[str, Any]) -> dict[str, Any]:
     bindings = openclaw_config.get("bindings") or []
     first_binding = bindings[0] if bindings else {}
@@ -221,14 +230,15 @@ def _detect_primary_delivery(openclaw_config: dict[str, Any]) -> dict[str, Any]:
 
 def _build_bootstrap_plan(context: InstalledContext) -> dict[str, Any]:
     openclaw_config = _read_openclaw_config(context.config.openclaw_root)
+    workspace_path = _resolve_workspace_path(context.config.openclaw_root, openclaw_config)
     delivery = _detect_primary_delivery(openclaw_config)
     session_key = f"agent:{context.config.patrol_agent}:{context.config.patrol_session}"
     cli = context.config.openclaw_cli or "openclaw"
-    prompt_path = context.layout.root / "CLAWBORATE_PATROL.md"
+    prompt_path = workspace_path / "CLAWBORATE_PATROL.md"
     cron_cmd = (
         f'{cli} cron add --name "{context.config.patrol_session}" '
         f'--agent "{context.config.patrol_agent}" '
-        f'--session "{context.config.patrol_session}" '
+        f'--session "isolated" '
         f'--session-key "{session_key}" '
         f'--every "{context.config.patrol_every_minutes}m" '
         f'--message "Read {prompt_path.name} and execute one Clawborate patrol tick. '
@@ -244,12 +254,13 @@ def _build_bootstrap_plan(context: InstalledContext) -> dict[str, Any]:
     return {
         "openclaw_root": context.config.openclaw_root,
         "openclaw_cli": context.config.openclaw_cli or "openclaw",
+        "workspace_path": str(workspace_path),
         "prompt_path": str(prompt_path),
         "cron": {
             "name": context.config.patrol_session,
             "every": f"{context.config.patrol_every_minutes}m",
             "agent": context.config.patrol_agent,
-            "session": context.config.patrol_session,
+            "session": "isolated",
             "session_key": session_key,
             "delivery": delivery,
             "command_preview": cron_cmd,
@@ -473,6 +484,15 @@ def install_skill(
     )
     registration = _sync_registration(layout, cfg)
     patrol_prompt_path = _write_patrol_prompt(layout)
+    openclaw_config = _read_openclaw_config(cfg.openclaw_root)
+    workspace_path = _resolve_workspace_path(cfg.openclaw_root, openclaw_config)
+    patrol_prompt_content = patrol_prompt_path.read_text(encoding="utf-8")
+    workspace_patrol_prompt_path = workspace_path / "CLAWBORATE_PATROL.md"
+    workspace_patrol_prompt_path.parent.mkdir(parents=True, exist_ok=True)
+    workspace_patrol_prompt_path.write_text(patrol_prompt_content, encoding="utf-8")
+    workspace_skill_patrol_prompt_path = workspace_path / "skills" / SKILL_NAME / "CLAWBORATE_PATROL.md"
+    workspace_skill_patrol_prompt_path.parent.mkdir(parents=True, exist_ok=True)
+    workspace_skill_patrol_prompt_path.write_text(patrol_prompt_content, encoding="utf-8")
     bootstrap_plan = _build_bootstrap_plan(context)
     save_json(layout.root / "bootstrap-plan.json", bootstrap_plan)
     if not layout.latest_report_path.exists():
@@ -495,6 +515,8 @@ def install_skill(
         "registration": registration,
         "config": cfg.to_dict(),
         "patrol_prompt_path": str(patrol_prompt_path),
+        "workspace_patrol_prompt_path": str(workspace_patrol_prompt_path),
+        "workspace_skill_patrol_prompt_path": str(workspace_skill_patrol_prompt_path),
         "bootstrap_plan": bootstrap_plan,
     }
 

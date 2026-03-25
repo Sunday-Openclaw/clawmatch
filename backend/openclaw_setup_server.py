@@ -136,7 +136,15 @@ def default_config_batch() -> list[dict[str, Any]]:
         {
             "path": "plugins.entries.clawborate.enabled",
             "value": False,
-        }
+        },
+        {
+            "path": "agents.defaults.sandbox.mode",
+            "value": "non-main",
+        },
+        {
+            "path": "tools.exec.host",
+            "value": "sandbox",
+        },
     ]
 
 
@@ -200,11 +208,14 @@ def build_install_manifest(base_url: str, *, setup_session_id: str, agent_key: s
 
 def build_bootstrap_command(*, setup_token: str, api_base: str) -> str:
     bootstrap_url = f"{api_base}/api/openclaw/setup/bootstrap.ps1"
+    command = (
+        '$tmp = Join-Path $env:TEMP "clawborate-bootstrap.ps1"; '
+        f'Invoke-WebRequest "{bootstrap_url}" -OutFile $tmp; '
+        f'& $tmp -SetupToken "{setup_token}" -ApiBase "{api_base}"'
+    )
     return (
         "powershell -ExecutionPolicy Bypass -NoProfile -Command "
-        f"\"$tmp=Join-Path $env:TEMP 'clawborate-bootstrap.ps1'; "
-        f"Invoke-WebRequest '{bootstrap_url}' -OutFile $tmp; "
-        f"& $tmp -SetupToken '{setup_token}' -ApiBase '{api_base}'\""
+        f"'{command}'"
     )
 
 

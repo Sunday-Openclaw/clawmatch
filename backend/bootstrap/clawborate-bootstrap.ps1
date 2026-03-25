@@ -10,9 +10,20 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+$script:Utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+try {
+    [Console]::InputEncoding = $script:Utf8NoBom
+} catch {
+}
+try {
+    [Console]::OutputEncoding = $script:Utf8NoBom
+} catch {
+}
+$OutputEncoding = $script:Utf8NoBom
 
 $script:OpenClawInvocation = @()
 $script:LogPath = $null
+$script:OpenClawRootPath = $null
 
 function Split-CommandPrefix {
     param([string[]]$Prefix)
@@ -50,8 +61,8 @@ function Write-JsonFile {
     if ($parent) {
         New-Item -ItemType Directory -Force -Path $parent | Out-Null
     }
-    $json = $Value | ConvertTo-Json -Depth 100
-    [System.IO.File]::WriteAllText($Path, $json, [System.Text.Encoding]::UTF8)
+    $json = ConvertTo-Json -InputObject $Value -Depth 100
+    [System.IO.File]::WriteAllText($Path, $json, (New-Object System.Text.UTF8Encoding($false)))
 }
 
 function Read-JsonFile {
@@ -59,7 +70,7 @@ function Read-JsonFile {
     if (-not (Test-Path $Path)) {
         return $null
     }
-    return (Get-Content -Raw -Path $Path | ConvertFrom-Json -Depth 100)
+    return (Get-Content -Raw -Path $Path | ConvertFrom-Json)
 }
 
 function Invoke-OpenClaw {
@@ -67,13 +78,40 @@ function Invoke-OpenClaw {
         [string[]]$Arguments,
         [switch]$AllowFailure
     )
-    if (-not $script:OpenClawInvocation -or $script:OpenClawInvocation.Count -eq 0) {
+    $invocation = @($script:OpenClawInvocation)
+    if (-not $invocation -or $invocation.Count -eq 0) {
         throw "OpenClaw CLI is not initialized."
     }
-    $prefix = Split-CommandPrefix -Prefix $script:OpenClawInvocation
-    $output = & $prefix.Exe @($prefix.Args + $Arguments) 2>&1
-    $exitCode = $LASTEXITCODE
-    $text = ($output | Out-String).Trim()
+    $prefix = Split-CommandPrefix -Prefix $invocation
+    $previousErrorActionPreference = $ErrorActionPreference
+    $nativePrefWasPresent = $null -ne (Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue)
+    if ($nativePrefWasPresent) {
+        $previousNativePreference = $PSNativeCommandUseErrorActionPreference
+    }
+    try {
+        $ErrorActionPreference = "Continue"
+        if ($nativePrefWasPresent) {
+            $PSNativeCommandUseErrorActionPreference = $false
+        }
+        $output = & $prefix.Exe @($prefix.Args + $Arguments) 2>&1
+        $exitCode = if ($null -ne $LASTEXITCODE) { $LASTEXITCODE } else { 0 }
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+        if ($nativePrefWasPresent) {
+            $PSNativeCommandUseErrorActionPreference = $previousNativePreference
+        }
+    }
+    $text = (
+        $output |
+        ForEach-Object {
+            if ($_ -is [System.Management.Automation.ErrorRecord]) {
+                $_.ToString()
+            } else {
+                "$_"
+            }
+        } |
+        Out-String
+    ).Trim()
     if (-not $AllowFailure -and $exitCode -ne 0) {
         throw "OpenClaw command failed ($exitCode): $text"
     }
@@ -81,6 +119,121 @@ function Invoke-OpenClaw {
         ExitCode = $exitCode
         Text = $text
     }
+}
+
+function Convert-MixedTextToJson {
+    param([string]$Text)
+    if (-not $Text) {
+        return $null
+    }
+    $trimmed = $Text.Trim()
+    if (-not $trimmed) {
+        return $null
+    }
+    try {
+        return $trimmed | ConvertFrom-Json
+    } catch {
+    }
+
+    $lines = @($trimmed -split "\r?\n")
+    for ($start = 0; $start -lt $lines.Count; $start++) {
+        $first = $lines[$start].TrimStart()
+        if (-not ($first.StartsWith("{") -or $first.StartsWith("["))) {
+            continue
+        }
+        for ($end = $lines.Count - 1; $end -ge $start; $end--) {
+            $candidate = ($lines[$start..$end] -join "`n").Trim()
+            if (-not $candidate) {
+                continue
+            }
+            try {
+                return $candidate | ConvertFrom-Json
+            } catch {
+            }
+        }
+    }
+    return $null
+}
+
+function Format-OpenClawTextForLog {
+    param([string]$Text)
+    if (-not $Text) {
+        return ""
+    }
+    $json = Convert-MixedTextToJson -Text $Text
+    if ($json) {
+        return (ConvertTo-Json -InputObject $json -Depth 50 -Compress)
+    }
+
+    $readable = New-Object System.Collections.Generic.List[string]
+    foreach ($line in @($Text -split "\r?\n")) {
+        $trimmed = $line.Trim()
+        if (-not $trimmed) {
+            continue
+        }
+        $asciiPrintable = 0
+        foreach ($char in $trimmed.ToCharArray()) {
+            $code = [int][char]$char
+            if (($code -ge 32 -and $code -le 126) -or $code -eq 9) {
+                $asciiPrintable++
+            }
+        }
+        if ($trimmed.Length -gt 0 -and (($asciiPrintable / $trimmed.Length) -ge 0.75)) {
+            if (-not $readable.Contains($trimmed)) {
+                [void]$readable.Add($trimmed)
+            }
+        }
+    }
+    return ($readable -join "`n").Trim()
+}
+
+function Resolve-LocalCronStorePath {
+    $candidateRoots = New-Object System.Collections.Generic.List[string]
+    foreach ($root in @($script:OpenClawRootPath, $OpenClawRoot, (Join-Path ([Environment]::GetFolderPath("UserProfile")) ".openclaw"))) {
+        if (-not $root) {
+            continue
+        }
+        if (-not $candidateRoots.Contains($root)) {
+            [void]$candidateRoots.Add($root)
+        }
+    }
+    foreach ($root in $candidateRoots) {
+        $path = Join-Path $root "cron\jobs.json"
+        if (Test-Path $path) {
+            return $path
+        }
+    }
+    if ($candidateRoots.Count -gt 0) {
+        return (Join-Path $candidateRoots[0] "cron\jobs.json")
+    }
+    return $null
+}
+
+function Resolve-CronJobIdFromLocalStore {
+    param([string]$Name)
+    $storePath = Resolve-LocalCronStorePath
+    if (-not $storePath -or -not (Test-Path $storePath)) {
+        return $null
+    }
+    try {
+        $payload = Read-JsonFile -Path $storePath
+    } catch {
+        return $null
+    }
+    $jobs = @()
+    if ($payload -and $payload.PSObject.Properties.Name -contains "jobs") {
+        $jobs = @($payload.jobs)
+    } elseif ($payload -is [System.Collections.IEnumerable] -and -not ($payload -is [string])) {
+        $jobs = @($payload)
+    } elseif ($payload -and $payload.id) {
+        $jobs = @($payload)
+    }
+    foreach ($job in $jobs) {
+        if ($job.name -eq $Name -and $job.id) {
+            return [string]$job.id
+        }
+    }
+    return $null
 }
 
 function Resolve-OpenClawInvocation {
@@ -114,16 +267,35 @@ function Resolve-OpenClawInvocation {
         }
     }
 
-    throw "未检测到 OpenClaw CLI。请先安装 OpenClaw 或通过 -OpenClawCli 指定路径。"
+    throw "OpenClaw CLI was not detected. Install OpenClaw first or pass -OpenClawCli explicitly."
 }
 
 function Resolve-OpenClawConfigPath {
     $result = Invoke-OpenClaw -Arguments @("config", "file")
-    $path = $result.Text.Trim()
+    $lines = @(
+        $result.Text -split "\r?\n" |
+        ForEach-Object { $_.Trim() } |
+        Where-Object { $_ }
+    )
+    $path = $null
+    [array]::Reverse($lines)
+    foreach ($line in $lines) {
+        if ($line -match '(?<path>(?:[A-Za-z]:\\|~[\\/]).*openclaw\.json)$') {
+            $path = $Matches["path"]
+            break
+        }
+    }
+    if (-not $path -and $lines.Count -eq 1) {
+        $path = $lines[0]
+    }
     if (-not $path) {
         throw "Could not resolve active OpenClaw config path."
     }
-    return $path
+    try {
+        return $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($path)
+    } catch {
+        return $path
+    }
 }
 
 function Resolve-OpenClawRootFromConfig {
@@ -295,11 +467,18 @@ function Merge-LegacyState {
         $current = @{}
     }
     if (-not $current.bootstrap) {
-        $current | Add-Member -NotePropertyName bootstrap -NotePropertyValue @{}
+        $current | Add-Member -NotePropertyName bootstrap -NotePropertyValue ([pscustomobject]@{}) -Force
     }
-    $current.bootstrap.legacy_plugin_state = $legacy
-    if ($LegacyPluginConfig) {
-        $current.bootstrap.legacy_plugin_config = $LegacyPluginConfig
+    if ($current.bootstrap -is [System.Collections.IDictionary]) {
+        $current.bootstrap["legacy_plugin_state"] = $legacy
+        if ($LegacyPluginConfig) {
+            $current.bootstrap["legacy_plugin_config"] = $LegacyPluginConfig
+        }
+    } else {
+        Add-Member -InputObject $current.bootstrap -NotePropertyName legacy_plugin_state -NotePropertyValue $legacy -Force
+        if ($LegacyPluginConfig) {
+            Add-Member -InputObject $current.bootstrap -NotePropertyName legacy_plugin_config -NotePropertyValue $LegacyPluginConfig -Force
+        }
     }
     Write-JsonFile -Path $statePath -Value $current
 }
@@ -362,6 +541,52 @@ function Resolve-DeliveryTarget {
     }
 }
 
+function Resolve-CronJobIdByName {
+    param([string]$Name)
+    $list = Invoke-OpenClaw -Arguments @("cron", "list", "--json") -AllowFailure
+    if ($list.ExitCode -eq 0) {
+        $payload = Convert-MixedTextToJson -Text $list.Text
+        if ($payload) {
+            $jobs = @()
+            if ($payload.PSObject.Properties.Name -contains "jobs") {
+                $jobs = @($payload.jobs)
+            } elseif ($payload -is [System.Collections.IEnumerable] -and -not ($payload -is [string])) {
+                $jobs = @($payload)
+            } elseif ($payload.id) {
+                $jobs = @($payload)
+            }
+            foreach ($job in $jobs) {
+                if ($job.name -eq $Name -and $job.id) {
+                    return [string]$job.id
+                }
+            }
+        }
+    }
+    return (Resolve-CronJobIdFromLocalStore -Name $Name)
+}
+
+function Resolve-CronJobIdFromAddOutput {
+    param(
+        [string]$Text,
+        [string]$ExpectedName
+    )
+    $row = Convert-MixedTextToJson -Text $Text
+    if (-not $row) {
+        return $null
+    }
+    if ($row.id -and (-not $ExpectedName -or $row.name -eq $ExpectedName)) {
+        return [string]$row.id
+    }
+    if ($row.PSObject.Properties.Name -contains "jobs") {
+        foreach ($job in @($row.jobs)) {
+            if ($job.id -and (-not $ExpectedName -or $job.name -eq $ExpectedName)) {
+                return [string]$job.id
+            }
+        }
+    }
+    return (Resolve-CronJobIdFromLocalStore -Name $ExpectedName)
+}
+
 function Ensure-CronJob {
     param(
         [hashtable]$CronSpec,
@@ -389,13 +614,28 @@ function Ensure-CronJob {
         $baseArgs += @("--to", $Delivery.to)
     }
 
-    $add = Invoke-OpenClaw -Arguments (@("cron", "add") + $baseArgs) -AllowFailure
-    if ($add.ExitCode -eq 0) {
-        return
+    $existingId = Resolve-CronJobIdByName -Name $CronSpec.name
+    if ($existingId) {
+        Write-Log "Cron already exists; updating existing job."
+        $null = Invoke-OpenClaw -Arguments (@("cron", "edit", $existingId) + $baseArgs[2..($baseArgs.Count - 1)])
+        return $existingId
     }
 
-    Write-Log "Cron add failed; attempting cron edit for existing job."
-    $null = Invoke-OpenClaw -Arguments (@("cron", "edit", $CronSpec.name) + $baseArgs[2..($baseArgs.Count - 1)])
+    $add = Invoke-OpenClaw -Arguments (@("cron", "add", "--json") + $baseArgs) -AllowFailure
+    if ($add.ExitCode -eq 0) {
+        $addId = Resolve-CronJobIdFromAddOutput -Text $add.Text -ExpectedName $CronSpec.name
+        if ($addId) {
+            return $addId
+        }
+    }
+
+    Write-Log "Cron add did not yield a usable job id; attempting cron edit for existing job."
+    $existingId = Resolve-CronJobIdByName -Name $CronSpec.name
+    if ($existingId) {
+        $null = Invoke-OpenClaw -Arguments (@("cron", "edit", $existingId) + $baseArgs[2..($baseArgs.Count - 1)])
+        return $existingId
+    }
+    return $null
 }
 
 function Invoke-SetupApi {
@@ -423,12 +663,13 @@ $manifest = $null
 $agentKey = $null
 
 try {
-    $script:OpenClawInvocation = Resolve-OpenClawInvocation
+    $script:OpenClawInvocation = @(Resolve-OpenClawInvocation)
     $receipt.openclaw_cli = ($script:OpenClawInvocation -join " ")
 
     $configPath = Resolve-OpenClawConfigPath
     $receipt.config_path = $configPath
     $root = Resolve-OpenClawRootFromConfig -ConfigPath $configPath
+    $script:OpenClawRootPath = $root
     $skillHomePath = Resolve-SkillHome -Root $root
     New-Item -ItemType Directory -Force -Path $skillHomePath | Out-Null
 
@@ -528,7 +769,7 @@ try {
 
     $config = Read-JsonFile -Path $configPath
     $delivery = Resolve-DeliveryTarget -Config $config
-    Ensure-CronJob -CronSpec @{
+    $cronId = Ensure-CronJob -CronSpec @{
         name = "clawborate-patrol"
         agent = "main"
         session = "isolated"
@@ -538,9 +779,13 @@ try {
     } -Delivery $delivery
 
     $validate = Invoke-OpenClaw -Arguments @("config", "validate", "--json") -AllowFailure
-    Write-Log ("OpenClaw config validate output: " + $validate.Text)
-    $run = Invoke-OpenClaw -Arguments @("cron", "run", "clawborate-patrol", "--expect-final") -AllowFailure
-    Write-Log ("OpenClaw cron run output: " + $run.Text)
+    Write-Log ("OpenClaw config validate output: " + (Format-OpenClawTextForLog -Text $validate.Text))
+    if ($cronId) {
+        $run = Invoke-OpenClaw -Arguments @("cron", "run", $cronId, "--expect-final") -AllowFailure
+        Write-Log ("OpenClaw cron run output: " + (Format-OpenClawTextForLog -Text $run.Text))
+    } else {
+        Write-Log "OpenClaw cron run skipped: could not resolve cron job id."
+    }
 
     $statePath = Join-Path $skillHomePath "state.json"
     $bootstrapPlanPath = Join-Path $skillHomePath "bootstrap-plan.json"
