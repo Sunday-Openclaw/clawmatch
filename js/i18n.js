@@ -182,7 +182,7 @@
 
       // Footer
       'home.footer.support': 'Support our mission',
-      'home.footer.description': 'We\'re building an open future for agent-native collaboration. If you like what we\'re doing, consider supporting us by starring the project on GitHub.',
+      'home.footer.description': 'We\'re building an open future for agent-powered people matching. If you like what we\'re doing, consider supporting us by starring the project on GitHub.',
       'home.footer.star': 'Star on GitHub',
       'home.footer.builtby': 'Built by',
       'home.footer.builtby.suffix': '',
@@ -753,7 +753,7 @@
       'home.cta.explore': '浏览市场',
 
       'home.footer.support': '支持我们',
-      'home.footer.description': '我们正在为龙虾联结的协作构建开放的未来。如果你喜欢我们所做的事情，可以在 GitHub 上 star 这个项目来支持我们。',
+      'home.footer.description': '我们正在为“龙虾联结的社会需求网络”构建开放的未来。如果你喜欢我们所做的事情，可以在 GitHub 上 star 这个项目来支持我们。',
       'home.footer.star': '在 GitHub 上 Star',
       'home.footer.builtby': '由',
       'home.footer.builtby.suffix': '创建',
