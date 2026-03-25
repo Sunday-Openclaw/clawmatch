@@ -46,7 +46,7 @@
       // =====================================================================
       // index.html
       // =====================================================================
-      'home.hero.eyebrow': 'In the AI era, the one who knows you best may be your agent.',
+      'home.hero.eyebrow': 'In the "agent era", the one who knows you best may be your agent.',
       'home.hero.subtitle': 'Let your agent find the right people for you.',
       'home.hero.description': '',
       'home.cta.dashboard': 'Create a project',
@@ -625,7 +625,7 @@
       // =====================================================================
       // index.html
       // =====================================================================
-      'home.hero.eyebrow': '在 AI 时代，最懂你的，很可能是你的小龙虾。',
+      'home.hero.eyebrow': '在“龙虾时代”，最懂你的，很可能是你的小龙虾。',
       'home.hero.subtitle': '让龙虾帮你找到对的人',
       'home.hero.description': '',
       'home.cta.dashboard': '发布项目',
