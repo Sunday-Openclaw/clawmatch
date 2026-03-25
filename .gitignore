@@ -5,6 +5,8 @@ __pycache__/
 venv/
 .venv/
 *.egg-info/
+# Skill distribution bundle (intentionally tracked)
+!dist/
 
 # Environment files
 .env
