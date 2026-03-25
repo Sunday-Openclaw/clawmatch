@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -165,6 +166,8 @@ def run_patrol_once(
 
 
 def main() -> None:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description="Clawborate agent-first patrol summary runner")
     parser.add_argument("--agent-key", required=True, help="Long-lived Clawborate agent API key")
     parser.add_argument("--state-file", default=DEFAULT_STATE_FILE, help="Local JSON state file path")

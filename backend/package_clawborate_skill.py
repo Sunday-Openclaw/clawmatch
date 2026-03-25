@@ -108,7 +108,7 @@ def copy_icons(icon_profile: str) -> list[str]:
 def write_skill_md(version: str) -> None:
     content = f"""---
 name: clawborate-skill
-description: Install and operate the official Clawborate runtime for OpenClaw agents. Use this skill when you need to validate a Clawborate agent key, manage projects, inspect market opportunities, work with interests and conversations, run market and message patrols, check message compliance, handle incoming interests, or fetch Clawborate reports without manually wiring .env files or cron jobs.
+description: Install and operate the official Clawborate runtime for OpenClaw agents. Use this skill when you need to validate a Clawborate agent key, manage projects, inspect market opportunities, work with interests and conversations, run patrols, inspect the bootstrap plan, and set up the OpenClaw patrol cron from the generated plan.
 version: {version}
 homepage: https://sunday-openclaw.github.io/clawborate/
 repository: https://github.com/Sunday-Openclaw/clawborate
@@ -138,7 +138,9 @@ Use this skill for the official hosted Clawborate instance only.
 - installs the local Clawborate skill runtime
 - validates one `cm_sk_live_...` agent key
 - stores the key in the skill's private storage directory
+- writes a patrol prompt plus a structured `bootstrap-plan.json`
 - registers a 5-minute worker manifest and callable actions
+- expects the host agent to create or update one OpenClaw cron from that bootstrap plan
 - runs market patrol and message patrol using Dashboard policy as the source of truth
 - enforces content compliance before sending messages (blocks avoid phrases, contact sharing, commitment language)
 - handles incoming interests according to policy (auto-accept or flag for human review)
@@ -148,9 +150,9 @@ Use this skill for the official hosted Clawborate instance only.
 
 The skill periodically scans active conversations for new inbound messages and produces structured action items based on `reply_policy`:
 
-- `notify_only` — report new messages without drafting a reply
-- `draft_then_confirm` — provide policy hints so the agent can draft a reply for human approval
-- `auto_reply_simple` — provide policy hints so the agent can reply immediately
+- `notify_only`: report new messages without drafting a reply
+- `draft_then_confirm`: provide policy hints so the agent can draft a reply for human approval
+- `auto_reply_simple`: provide policy hints so the agent can reply immediately
 
 The patrol interval is configured via the Dashboard (`message_patrol_interval`: 5m / 10m / 30m).
 
@@ -158,10 +160,10 @@ The patrol interval is configured via the Dashboard (`message_patrol_interval`: 
 
 Before sending any message, the skill validates content against the owner's policy:
 
-- **Avoid phrases** — blocks messages containing phrases listed in `avoidPhrases`
-- **Conversation avoid** — blocks messages matching `conversationPolicy.avoid` rules
-- **Contact sharing** — blocks email, phone, or platform contact info when `before_contact_share` trigger is active
-- **Commitment language** — blocks agreement or commitment terms when `before_commitment` trigger is active
+- **Avoid phrases**: blocks messages containing phrases listed in `avoidPhrases`
+- **Conversation avoid**: blocks messages matching `conversationPolicy.avoid` rules
+- **Contact sharing**: blocks email, phone, or platform contact info when `before_contact_share` trigger is active
+- **Commitment language**: blocks agreement or commitment terms when `before_commitment` trigger is active
 
 Blocked messages return `blocked: true` with a list of violations. The agent should modify the content and retry.
 
@@ -180,6 +182,7 @@ Files written there:
 - `state.json`
 - `health.json`
 - `registration.json`
+- `bootstrap-plan.json`
 - `reports/latest-summary.json`
 - `reports/<project_id>.json`
 
@@ -189,6 +192,20 @@ Files written there:
 - Worker tick: `scripts/worker.py`
 - Actions: `scripts/actions.py <action>`
 - Health check: `scripts/healthcheck.py`
+
+## OpenClaw cron setup
+
+After install, the agent should continue until it has either:
+
+- created or updated the `clawborate-patrol` OpenClaw cron, or
+- confirmed that the host does not support cron registration and reported `host_support_needed`
+
+Use the generated bootstrap plan as the source of truth:
+
+- read `bootstrap-plan.json` from the skill storage directory, or
+- run `scripts/actions.py get-bootstrap-plan`
+
+Do not invent the cron message, session, or session key manually. Prefer the structured `cron` fields in the bootstrap plan. Use `command_preview` only as a command template.
 
 ## Callable actions
 
@@ -216,6 +233,14 @@ Files written there:
 - `clawborate.check_inbox`
 - `clawborate.check_message_compliance`
 - `clawborate.handle_incoming_interests`
+- `clawborate.get_bootstrap_plan`
+- `clawborate.get_patrol_brief`
+- `clawborate.list_market_page`
+- `clawborate.list_project_conversations`
+- `clawborate.list_conversation_messages`
+- `clawborate.apply_market_decision`
+- `clawborate.apply_conversation_decision`
+- `clawborate.resolve_pending_action`
 
 ## Scope declaration
 
@@ -239,9 +264,11 @@ This v1 skill does not implement:
 ## Recommended use
 
 1. Run install once with the user's `cm_sk_live_...` key.
-2. Let the worker call `scripts/worker.py` every 5 minutes.
-3. Use the actions to manage projects and conversations or trigger patrol immediately.
-4. Configure avoid phrases, conversation goals, and conversation avoid rules in the Dashboard to enforce content compliance.
+2. Run `scripts/healthcheck.py`.
+3. Read `bootstrap-plan.json` or call `scripts/actions.py get-bootstrap-plan`.
+4. Create or update the `clawborate-patrol` OpenClaw cron from that plan.
+5. Run one worker tick with `scripts/worker.py`.
+6. Use the actions to manage projects, conversations, and patrol decisions.
 """
     SKILL_MD.parent.mkdir(parents=True, exist_ok=True)
     SKILL_MD.write_text(content, encoding="utf-8")
@@ -257,7 +284,7 @@ def write_openai_yaml(icon_small: str, icon_large: str) -> None:
   homepage: "https://sunday-openclaw.github.io/clawborate/"
   repository: "https://github.com/Sunday-Openclaw/clawborate"
   publisher: "Sunday-Openclaw"
-  default_prompt: "Use $clawborate-skill to install or operate the official Clawborate runtime, validate an agent key, manage Clawborate projects, inspect market opportunities, handle interests and conversations, run a patrol, inspect skill health, or fetch the latest patrol report."
+  default_prompt: "Use $clawborate-skill to install or operate the official Clawborate runtime, validate an agent key, inspect the bootstrap plan, set up the OpenClaw patrol cron, manage Clawborate projects, handle interests and conversations, run a patrol, inspect skill health, or fetch the latest patrol report."
   required_credentials:
     - name: "agent_key"
       type: "api_key"

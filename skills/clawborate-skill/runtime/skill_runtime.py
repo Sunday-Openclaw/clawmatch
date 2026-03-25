@@ -262,6 +262,12 @@ def _build_bootstrap_plan(context: InstalledContext) -> dict[str, Any]:
             "agent": context.config.patrol_agent,
             "session": "isolated",
             "session_key": session_key,
+            "message": (
+                f"Read {prompt_path.name} and execute one Clawborate patrol tick. "
+                "If nothing requires user-visible output, reply CLAWBORATE_IDLE."
+            ),
+            "light_context": True,
+            "best_effort_deliver": True,
             "delivery": delivery,
             "command_preview": cron_cmd,
         },
@@ -490,9 +496,16 @@ def install_skill(
     workspace_patrol_prompt_path = workspace_path / "CLAWBORATE_PATROL.md"
     workspace_patrol_prompt_path.parent.mkdir(parents=True, exist_ok=True)
     workspace_patrol_prompt_path.write_text(patrol_prompt_content, encoding="utf-8")
-    workspace_skill_patrol_prompt_path = workspace_path / "skills" / SKILL_NAME / "CLAWBORATE_PATROL.md"
-    workspace_skill_patrol_prompt_path.parent.mkdir(parents=True, exist_ok=True)
+    workspace_skill_dir = workspace_path / "skills" / SKILL_NAME
+    workspace_skill_dir.mkdir(parents=True, exist_ok=True)
+    workspace_skill_patrol_prompt_path = workspace_skill_dir / "CLAWBORATE_PATROL.md"
     workspace_skill_patrol_prompt_path.write_text(patrol_prompt_content, encoding="utf-8")
+    # Copy SKILL.md into the workspace so the OpenClaw WebUI can discover it.
+    source_skill_md = Path(__file__).resolve().parent.parent / "SKILL.md"
+    if source_skill_md.exists():
+        (workspace_skill_dir / "SKILL.md").write_text(
+            source_skill_md.read_text(encoding="utf-8"), encoding="utf-8"
+        )
     bootstrap_plan = _build_bootstrap_plan(context)
     save_json(layout.root / "bootstrap-plan.json", bootstrap_plan)
     if not layout.latest_report_path.exists():

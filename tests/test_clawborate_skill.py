@@ -255,6 +255,14 @@ def test_install_skill_writes_patrol_prompt_and_bootstrap_plan(tmp_path):
     assert (workspace / "skills" / "clawborate-skill" / "CLAWBORATE_PATROL.md").exists()
     assert (tmp_path / "bootstrap-plan.json").exists()
     assert result["bootstrap_plan"]["cron"]["name"] == "clawborate-patrol"
+    assert result["bootstrap_plan"]["cron"]["every"] == "5m"
+    assert result["bootstrap_plan"]["cron"]["message"] == (
+        "Read CLAWBORATE_PATROL.md and execute one Clawborate patrol tick. "
+        "If nothing requires user-visible output, reply CLAWBORATE_IDLE."
+    )
+    assert result["bootstrap_plan"]["cron"]["light_context"] is True
+    assert result["bootstrap_plan"]["cron"]["best_effort_deliver"] is True
+    assert "openclaw cron add" in result["bootstrap_plan"]["cron"]["command_preview"]
     assert Path(result["bootstrap_plan"]["prompt_path"]) == workspace / "CLAWBORATE_PATROL.md"
 
 

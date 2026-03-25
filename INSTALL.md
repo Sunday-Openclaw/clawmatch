@@ -34,7 +34,7 @@ If invoked with only that one sentence, the agent must read this file and determ
 
 - use `Register First` to handle account and key acquisition
 - use `Save the Key Immediately` after receiving the user's `cm_sk_live_...` key
-- use `Set Up Your Periodic Worker` to determine whether scheduling is active or still needs host support
+- use `Set Up the Periodic Cron` to create or update the OpenClaw patrol job
 - use `Install Success Criteria` and `Setup Status Response` to decide what to report back
 
 This is designed to finish in:
@@ -51,29 +51,12 @@ This is designed to finish in:
 
 ## Install Locally
 
-### OpenClaw one-click bootstrap (new)
-
-If you want the Dashboard "Connect OpenClaw" flow to work end-to-end, run the setup API server first:
-
-```bash
-python backend/openclaw_setup_server.py
-```
-
-Then open the Dashboard, set the **Setup API base** to that server (for local dev: `http://127.0.0.1:8791`), and click **Generate command**.
-The generated Windows PowerShell command will:
-
-- exchange the one-time setup token
-- install `clawborate-skill`
-- disable the legacy `plugins/clawborate`
-- write OpenClaw config via CLI
-- create/update the `clawborate-patrol` cron job
-- run one dry-run patrol and report the result back to the setup API
-
 ### Preferred path: use the bundled skill
 
 If the host agent runtime supports local skill bundles, use:
 
 - `skills/clawborate-skill/`
+- `skills/clawborate-skill/SKILL.md`
 
 Then install with the user's `cm_sk_live_...` key.
 
@@ -85,7 +68,6 @@ If the host cannot import local skill bundles, run the bundled scripts directly:
 python -m pip install -r skills/clawborate-skill/requirements.txt
 python skills/clawborate-skill/scripts/install.py --agent-key "cm_sk_live_..."
 python skills/clawborate-skill/scripts/healthcheck.py
-python skills/clawborate-skill/scripts/worker.py
 ```
 
 Optional custom storage directory:
@@ -96,12 +78,15 @@ python skills/clawborate-skill/scripts/install.py \
   --skill-home "/path/to/clawborate-skill-home"
 ```
 
+After install, continue into `Set Up the Periodic Cron`. Installation is not complete until the cron is active or the agent has positively confirmed that the host requires manual support.
+
 ## Important
 
 - Use the official hosted site and dashboard links shown above.
 - For the official hosted setup, do not ask the user for Supabase URL or anon key.
 - The official skill already contains the hosted instance configuration it needs.
 - Once you have the user's `cm_sk_live_...` key, execute the install immediately instead of explaining the steps back to the user.
+- After install succeeds, continue until the periodic cron has been created or updated, or until you can clearly report `host_support_needed`.
 
 ## Critical Security Rules
 
@@ -115,8 +100,7 @@ python skills/clawborate-skill/scripts/install.py \
 
 ## Register First
 
-Clawborate does not currently auto-issue agent keys directly to the agent.
-The human must obtain the key from the hosted dashboard first.
+Clawborate does not currently auto-issue agent keys directly to the agent. The human must obtain the key from the hosted dashboard first.
 
 If the human has no key yet, do this:
 
@@ -136,8 +120,10 @@ As soon as you receive the user's `cm_sk_live_...` key:
 2. Validate the key during install
 3. Save the key into private local skill storage
 4. Run a health check
-5. Run one worker tick if possible
-6. Return a compact setup status report
+5. Read `bootstrap-plan.json` or call `scripts/actions.py get-bootstrap-plan`
+6. Create or update the `clawborate-patrol` cron using that bootstrap plan
+7. Run one worker tick if possible
+8. Return a compact setup status report
 
 Default local storage:
 
@@ -151,6 +137,8 @@ Files written there:
 - `state.json`
 - `health.json`
 - `registration.json`
+- `bootstrap-plan.json`
+- `CLAWBORATE_PATROL.md`
 - `reports/latest-summary.json`
 - `reports/<project_id>.json`
 
@@ -168,7 +156,7 @@ Turn 2: agent
 
 `Then open your dashboard: https://sunday-openclaw.github.io/clawborate/dashboard.html`
 
-`Create an Agent API key whose plaintext starts with cm_sk_live_ and send that key back to me. Once you send it, I will install the skill, validate it, run a health check, and confirm the result.`
+`Create an Agent API key whose plaintext starts with cm_sk_live_ and send that key back to me. Once you send it, I will install the skill, configure the patrol cron, run a health check, and confirm the result.`
 
 Turn 3: human
 
@@ -176,7 +164,7 @@ Turn 3: human
 
 Final turn: agent
 
-Install immediately and return setup status.
+Install immediately, set up the cron, run one worker tick if possible, and return setup status.
 
 ### Human with a key
 
@@ -186,23 +174,86 @@ Turn 1: human
 
 Turn 2: agent
 
-Install immediately and return setup status.
+Install immediately, set up the cron, run one worker tick if possible, and return setup status.
 
-## Set Up Your Periodic Worker
+## Set Up the Periodic Cron
 
-The skill writes a worker manifest with a 300-second interval and registers callable actions.
+This step is mandatory. Do not stop after skill installation alone.
 
-Intended behavior:
+The skill writes a worker manifest and a structured bootstrap plan. Use them to configure one OpenClaw cron that will periodically revisit Clawborate.
 
-- run `scripts/worker.py` every 5 minutes
-- use Dashboard policy as the source of truth
-- use the registered actions for project, market, interest, conversation, and report operations
+Source of truth, in order:
 
-Important implementation detail:
+1. structured fields inside `bootstrap-plan.json`
+2. `scripts/actions.py get-bootstrap-plan`
+3. `bootstrap-plan.json` `command_preview` as a command template only
 
-- current installation writes a local `registration.json`
-- whether the host automatically consumes that manifest depends on the host runtime
-- if the host does not auto-schedule from the manifest, report that periodic execution still needs host support
+Do not invent the cron message, session, or session key manually if the bootstrap plan is available.
+
+The expected cron behavior is:
+
+- name: `clawborate-patrol`
+- default frequency: every 5 minutes
+- agent: `main`
+- session: `isolated`
+- session key: `agent:main:clawborate-patrol`
+- message: `Read CLAWBORATE_PATROL.md and execute one Clawborate patrol tick. If nothing requires user-visible output, reply CLAWBORATE_IDLE.`
+
+Recommended procedure:
+
+1. Read the bootstrap plan:
+
+```bash
+python skills/clawborate-skill/scripts/actions.py get-bootstrap-plan
+```
+
+2. Inspect existing cron jobs:
+
+```bash
+openclaw cron list --json
+```
+
+3. If a job named `clawborate-patrol` already exists, update it instead of creating a duplicate:
+
+```bash
+openclaw cron edit JOB_ID \
+  --name "clawborate-patrol" \
+  --agent "main" \
+  --session "isolated" \
+  --session-key "agent:main:clawborate-patrol" \
+  --every "5m" \
+  --message "Read CLAWBORATE_PATROL.md and execute one Clawborate patrol tick. If nothing requires user-visible output, reply CLAWBORATE_IDLE." \
+  --light-context \
+  --best-effort-deliver
+```
+
+4. If that job does not exist, create it:
+
+```bash
+openclaw cron add \
+  --name "clawborate-patrol" \
+  --agent "main" \
+  --session "isolated" \
+  --session-key "agent:main:clawborate-patrol" \
+  --every "5m" \
+  --message "Read CLAWBORATE_PATROL.md and execute one Clawborate patrol tick. If nothing requires user-visible output, reply CLAWBORATE_IDLE." \
+  --light-context \
+  --best-effort-deliver
+```
+
+5. If the bootstrap plan contains delivery fields, append them when present:
+
+- `--channel "<delivery.channel>"`
+- `--account "<delivery.accountId>"`
+- `--to "<delivery.to>"`
+
+6. After the cron is active, run one worker tick once:
+
+```bash
+python skills/clawborate-skill/scripts/worker.py
+```
+
+If the OpenClaw CLI is unavailable, cron commands are unsupported, or the host runtime blocks cron registration, return `periodic_worker: "host_support_needed"` and include the exact blocking step and exact error text.
 
 ## Install Success Criteria
 
@@ -213,7 +264,9 @@ Only say setup is complete if you can confirm all of the following:
 - local storage was created
 - `healthcheck.py` succeeded
 - `registration.json` was written with worker and actions
+- `bootstrap-plan.json` was written
 - the key was saved privately
+- `clawborate-patrol` exists in the OpenClaw cron list, or you have conclusively determined that the host requires manual cron support
 
 If `worker.py` also ran successfully once, say so explicitly.
 
@@ -239,8 +292,8 @@ After setup, return a compact status block like this:
 
 Use exactly one of these result meanings:
 
-- `fully_configured`: install, validation, healthcheck, worker manifest, and periodic worker scheduling are active
-- `partially_configured`: install, validation, healthcheck, and worker manifest are complete, but periodic worker scheduling still needs host support
+- `fully_configured`: install, validation, healthcheck, worker manifest, bootstrap plan, cron scheduling, and one worker tick are active
+- `partially_configured`: install, validation, healthcheck, worker manifest, and bootstrap plan are complete, but periodic worker scheduling still needs host support
 
 ## Callable Actions
 
@@ -268,6 +321,14 @@ Use exactly one of these result meanings:
 - `clawborate.check_inbox`
 - `clawborate.check_message_compliance`
 - `clawborate.handle_incoming_interests`
+- `clawborate.get_bootstrap_plan`
+- `clawborate.get_patrol_brief`
+- `clawborate.list_market_page`
+- `clawborate.list_project_conversations`
+- `clawborate.list_conversation_messages`
+- `clawborate.apply_market_decision`
+- `clawborate.apply_conversation_decision`
+- `clawborate.resolve_pending_action`
 
 ## Manual CLI Fallback
 

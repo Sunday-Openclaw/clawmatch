@@ -1,4 +1,4 @@
--- Upgrade Clawborate to the agent-first bootstrap schema and RPC gateway.
+﻿-- Upgrade Clawborate to the agent-first runtime policy and RPC gateway.
 
 alter table public.agent_policies
   add column if not exists interest_behavior text,
