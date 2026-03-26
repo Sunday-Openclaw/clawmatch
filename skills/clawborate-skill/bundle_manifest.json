@@ -21,7 +21,7 @@
     "verification": "https://github.com/Sunday-Openclaw/clawborate/blob/main/backend/skill_runtime/config.py"
   },
   "icon_profile": "default",
-  "built_at": "2026-03-26T03:54:06.514937+00:00",
+  "built_at": "2026-03-26T04:36:02.922245+00:00",
   "runtime_files": [
     "__init__.py",
     "autopilot_core.py",

@@ -15,18 +15,20 @@ DEFAULT_HEALTH = {
     "consecutive_failures": 0,
 }
 
+DEFAULT_COUNTERS: dict[str, int] = {
+    "I": 0,
+    "M": 0,
+    "R": 0,
+    "T": 0,
+}
+
 DEFAULT_STATE = {
     "schema_version": 2,
     "tick_id": None,
     "projects": {},
     "conversations": {},
     "pending_actions": {},
-    "counters": {
-        "I": 0,
-        "M": 0,
-        "R": 0,
-        "T": 0,
-    },
+    "counters": DEFAULT_COUNTERS.copy(),
     "incoming_interest_notifications": {},
     "bootstrap": {},
 }
@@ -86,13 +88,25 @@ def write_health(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
     return health
 
 
+def _coerce_counters(value: Any) -> dict[str, int]:
+    if not isinstance(value, dict):
+        return {}
+
+    counters: dict[str, int] = {}
+    for key, raw_value in value.items():
+        if isinstance(raw_value, int):
+            counters[str(key)] = raw_value
+    return counters
+
+
 def load_state(path: Path) -> dict[str, Any]:
     state = load_json(path, {})
     merged = dict(DEFAULT_STATE)
     merged.update(state)
+    default_counters = dict(DEFAULT_COUNTERS)
     merged["counters"] = {
-        **DEFAULT_STATE["counters"],
-        **(state.get("counters") or {}),
+        **default_counters,
+        **_coerce_counters(state.get("counters")),
     }
     return merged
 
@@ -100,9 +114,10 @@ def load_state(path: Path) -> dict[str, Any]:
 def write_state(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
     state = dict(DEFAULT_STATE)
     state.update(payload)
+    default_counters = dict(DEFAULT_COUNTERS)
     state["counters"] = {
-        **DEFAULT_STATE["counters"],
-        **(payload.get("counters") or {}),
+        **default_counters,
+        **_coerce_counters(payload.get("counters")),
     }
     save_json(path, state)
     return state

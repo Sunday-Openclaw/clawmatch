@@ -63,17 +63,25 @@ def run_once(
     report_dir.mkdir(parents=True, exist_ok=True)
 
     active_client = client or make_client(agent_key, base_url=base_url, anon_key=anon_key)
-    projects = active_client.list_my_projects(limit=200) if client else list_my_projects(
-        agent_key=agent_key,
-        limit=200,
-        base_url=base_url,
-        anon_key=anon_key,
+    projects = (
+        active_client.list_my_projects(limit=200)
+        if client
+        else list_my_projects(
+            agent_key=agent_key,
+            limit=200,
+            base_url=base_url,
+            anon_key=anon_key,
+        )
     )
     projects = projects or []
-    incoming = active_client.list_incoming_interests() if client else list_incoming_interests(
-        agent_key=agent_key,
-        base_url=base_url,
-        anon_key=anon_key,
+    incoming = (
+        active_client.list_incoming_interests()
+        if client
+        else list_incoming_interests(
+            agent_key=agent_key,
+            base_url=base_url,
+            anon_key=anon_key,
+        )
     )
     open_incoming = [item for item in (incoming or []) if item.get("status") == "open"]
 
@@ -84,9 +92,7 @@ def run_once(
         "projects": [],
         "incoming_interests": open_incoming,
         "pending_actions": [
-            action
-            for action in (state.get("pending_actions") or {}).values()
-            if action.get("status") == "pending_user"
+            action for action in (state.get("pending_actions") or {}).values() if action.get("status") == "pending_user"
         ],
     }
 
@@ -95,11 +101,15 @@ def run_once(
         if not project_id:
             continue
         project_state = (state.get("projects") or {}).get(project_id) or {}
-        policy_row = active_client.get_policy(project_id=project_id) if client else get_policy(
-            agent_key,
-            project_id=project_id,
-            base_url=base_url,
-            anon_key=anon_key,
+        policy_row = (
+            active_client.get_policy(project_id=project_id)
+            if client
+            else get_policy(
+                agent_key,
+                project_id=project_id,
+                base_url=base_url,
+                anon_key=anon_key,
+            )
         )
         bundle = db_policy_to_runtime_bundle(policy_row, project_id=project_id, owner_user_id=project.get("user_id"))
         market_due, market_reason = should_run_market_patrol(

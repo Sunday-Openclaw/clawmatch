@@ -211,7 +211,7 @@ def _read_openclaw_config(openclaw_root: str | Path | None) -> dict[str, Any]:
 
 def _resolve_workspace_path(openclaw_root: str | Path | None, openclaw_config: dict[str, Any]) -> Path:
     root = Path(openclaw_root).expanduser() if openclaw_root else Path.home() / ".openclaw"
-    defaults = ((openclaw_config.get("agents") or {}).get("defaults") or {})
+    defaults = (openclaw_config.get("agents") or {}).get("defaults") or {}
     workspace = defaults.get("workspace")
     if workspace:
         return Path(str(workspace)).expanduser()
@@ -506,9 +506,7 @@ def install_skill(
     # Copy SKILL.md into the workspace so the OpenClaw WebUI can discover it.
     source_skill_md = Path(__file__).resolve().parent.parent / "SKILL.md"
     if source_skill_md.exists():
-        (workspace_skill_dir / "SKILL.md").write_text(
-            source_skill_md.read_text(encoding="utf-8"), encoding="utf-8"
-        )
+        (workspace_skill_dir / "SKILL.md").write_text(source_skill_md.read_text(encoding="utf-8"), encoding="utf-8")
     bootstrap_plan = _build_bootstrap_plan(context)
     save_json(layout.root / "bootstrap-plan.json", bootstrap_plan)
     if not layout.latest_report_path.exists():
@@ -823,11 +821,7 @@ def send_message(
     project_ids = {str(project.get("id")) for project in projects or [] if project.get("id")}
     incoming = client.list_incoming_interests()
     outgoing = client.list_outgoing_interests()
-    interests_by_id = {
-        str(item.get("id")): item
-        for item in (incoming or []) + (outgoing or [])
-        if item.get("id")
-    }
+    interests_by_id = {str(item.get("id")): item for item in (incoming or []) + (outgoing or []) if item.get("id")}
 
     source_project_id = None
     source_resolution = "unknown"
@@ -1004,7 +998,7 @@ def get_patrol_brief(
     # --- Reconciliation: sync local pending_actions against server state ---
     all_incoming_by_id = {str(item.get("id")): item for item in (incoming or []) if item.get("id")}
     pending_actions = state.setdefault("pending_actions", {})
-    for token, action in list(pending_actions.items()):
+    for _token, action in list(pending_actions.items()):
         if action.get("type") != "incoming_interest" or action.get("status") != "pending_user":
             continue
         interest_id = str(action.get("interest_id") or "")
@@ -1102,9 +1096,7 @@ def get_patrol_brief(
 
     _save_runtime_state(context, state)
     pending_user_actions = [
-        action
-        for action in (state.get("pending_actions") or {}).values()
-        if action.get("status") == "pending_user"
+        action for action in (state.get("pending_actions") or {}).values() if action.get("status") == "pending_user"
     ]
     has_pending = len(pending_user_actions) > 0
     latest_report = {
@@ -1155,11 +1147,7 @@ def list_market_page(
 
     incoming = client.list_incoming_interests()
     outgoing_all = client.list_outgoing_interests()
-    interests_by_id = {
-        str(item.get("id")): item
-        for item in (incoming or []) + (outgoing_all or [])
-        if item.get("id")
-    }
+    interests_by_id = {str(item.get("id")): item for item in (incoming or []) + (outgoing_all or []) if item.get("id")}
     conversations = client.list_conversations() or []
     active_conversation_target_ids: set[str] = set()
     for conversation in conversations:
@@ -1229,11 +1217,7 @@ def list_project_conversations(
     outgoing = client.list_outgoing_interests()
     projects = client.list_my_projects(limit=200) or []
     project_ids = {str(project.get("id")) for project in projects if project.get("id")}
-    interests_by_id = {
-        str(item.get("id")): item
-        for item in (incoming or []) + (outgoing or [])
-        if item.get("id")
-    }
+    interests_by_id = {str(item.get("id")): item for item in (incoming or []) + (outgoing or []) if item.get("id")}
 
     relevant: list[dict[str, Any]] = []
     for conversation in conversations:
@@ -1267,8 +1251,10 @@ def list_conversation_messages(
 
     messages = client.list_messages(conversation_id=conversation_id) or []
     tracking = _conversation_state_bucket(state, conversation_id)
-    pivot_id = since_id or cast(str | None, tracking.get("last_processed_inbound_message_id")) or cast(
-        str | None, tracking.get("last_seen_message_id")
+    pivot_id = (
+        since_id
+        or cast(str | None, tracking.get("last_processed_inbound_message_id"))
+        or cast(str | None, tracking.get("last_seen_message_id"))
     )
     start_index = 0
     if pivot_id:
@@ -1283,11 +1269,7 @@ def list_conversation_messages(
     project_ids = {str(project.get("id")) for project in projects if project.get("id")}
     incoming = client.list_incoming_interests()
     outgoing = client.list_outgoing_interests()
-    interests_by_id = {
-        str(item.get("id")): item
-        for item in (incoming or []) + (outgoing or [])
-        if item.get("id")
-    }
+    interests_by_id = {str(item.get("id")): item for item in (incoming or []) + (outgoing or []) if item.get("id")}
     source_project_id, resolution = _resolve_conversation_source_project(
         conversation=conversation,
         interests_by_id=interests_by_id,

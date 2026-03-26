@@ -173,7 +173,7 @@ def coerce_db_policy_row(
         or DEFAULT_DB_POLICY["interest_behavior"]
     )
     if interest_behavior not in {"notify_then_send", "direct_send"}:
-        interest_behavior = DEFAULT_DB_POLICY["interest_behavior"]
+        interest_behavior = str(DEFAULT_DB_POLICY["interest_behavior"])
 
     reply_behavior = str(
         source.get("reply_behavior")
@@ -181,12 +181,14 @@ def coerce_db_policy_row(
         or DEFAULT_DB_POLICY["reply_behavior"]
     )
     if reply_behavior not in {"notify_then_send", "direct_send"}:
-        reply_behavior = DEFAULT_DB_POLICY["reply_behavior"]
+        reply_behavior = str(DEFAULT_DB_POLICY["reply_behavior"])
 
     row: dict[str, Any] = {
         "project_id": source.get("project_id") or project_id,
         "owner_user_id": source.get("owner_user_id") or owner_user_id,
-        "market_patrol_interval": str(source.get("market_patrol_interval") or DEFAULT_DB_POLICY["market_patrol_interval"]),
+        "market_patrol_interval": str(
+            source.get("market_patrol_interval") or DEFAULT_DB_POLICY["market_patrol_interval"]
+        ),
         "message_patrol_interval": str(
             source.get("message_patrol_interval") or DEFAULT_DB_POLICY["message_patrol_interval"]
         ),
